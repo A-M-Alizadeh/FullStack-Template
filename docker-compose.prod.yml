@@ -1,0 +1,34 @@
+services:
+  db:
+    env_file:
+      - ./backend/.env.production
+    ports: []
+    restart: always
+
+  backend:
+    env_file:
+      - ./backend/.env.production
+    environment:
+      APP_ENV: production
+      POSTGRES_HOST: db
+    command:
+      [
+        "sh",
+        "-c",
+        "uvicorn app.main:app --host 0.0.0.0 --port $${PORT:-8000} --workers $${WEB_CONCURRENCY:-2}",
+      ]
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+    env_file:
+      - ./frontend/.env.production
+    environment:
+      APP_ENV: production
+      NODE_ENV: production
+    restart: always
