@@ -6,7 +6,7 @@ Full-stack app for creating and publishing digital product passports (QR → pub
 
 - `backend/` — FastAPI
 - `frontend/` — Next.js
-- `docker-compose.yml` — local (db + api + web)
+- `docker-compose.yml` — Postgres for local dev (API/web services commented out)
 - `docker-compose.prod.yml` — prod overrides
 
 See `backend/README.md` and `frontend/README.md` for app-specific notes.
@@ -19,15 +19,13 @@ cp backend/.env.local.example backend/.env.local
 cp frontend/.env.local.example frontend/.env.local
 ```
 
-Edit secrets before running.
+## Local development
 
-## Run
+Postgres in Docker, API and web on the host (usual setup):
 
 ```bash
-docker compose up --build
+docker compose up db
 ```
-
-Without Docker:
 
 ```bash
 cd backend && uv sync && APP_ENV=local uv run uvicorn app.main:app --reload
@@ -37,8 +35,8 @@ cd frontend && npm i && npm run dev
 - API: http://localhost:8000/docs
 - App: http://localhost:3000
 
-Prod-style:
+`backend/.env.local` already uses `POSTGRES_HOST=localhost`.
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file frontend/.env.production up --build -d
-```
+## Next
+
+See [backend/README.md](backend/README.md) — DB/models first, then auth, then products / passport, then UI.

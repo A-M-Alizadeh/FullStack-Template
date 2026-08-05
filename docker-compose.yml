@@ -14,38 +14,41 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    env_file:
-      - ./backend/.env.local
-    environment:
-      APP_ENV: local
-      POSTGRES_HOST: db
-    ports:
-      - "${BACKEND_PUBLISH_PORT:-8000}:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
-    restart: unless-stopped
-    env_file:
-      - ./frontend/.env.local
-    environment:
-      APP_ENV: local
-    ports:
-      - "${FRONTEND_PUBLISH_PORT:-3000}:3000"
-    depends_on:
-      - backend
+  # Uncomment for full stack in Docker. For local dev, run API/web on the host
+  # and only start the db: docker compose up db
+  #
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   restart: unless-stopped
+  #   env_file:
+  #     - ./backend/.env.local
+  #   environment:
+  #     APP_ENV: local
+  #     POSTGRES_HOST: db
+  #   ports:
+  #     - "${BACKEND_PUBLISH_PORT:-8000}:8000"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #     args:
+  #       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+  #       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
+  #   restart: unless-stopped
+  #   env_file:
+  #     - ./frontend/.env.local
+  #   environment:
+  #     APP_ENV: local
+  #   ports:
+  #     - "${FRONTEND_PUBLISH_PORT:-3000}:3000"
+  #   depends_on:
+  #     - backend
 
 volumes:
   postgres_data:
