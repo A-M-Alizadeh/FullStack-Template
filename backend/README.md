@@ -6,41 +6,51 @@ FastAPI API for the DPP platform.
 
 ```
 app/
-  api/        routers
-  core/       config, logging, middleware, errors, enums
-  auth/       (todo)
-  users/      User model
-  products/   product + nested models
-  database/   engine, session, Base
+  api/         route aggregation
+  core/        config, logging, middleware, enums
+  auth/        login, JWT, refresh, deps
+  schemas/     Pydantic request/response models
+  users/       User model
+  products/    product + nested models
+  database/    engine, session, Base
 alembic/
+scripts/       seed helpers
 tests/
 ```
 
-## What we did so far
+## Done so far
 
-1. Split backend from frontend, Compose at repo root.
-2. Config from env files via `APP_ENV`.
-3. App factory, middleware, health route.
-4. DB plan in [docs/database.md](docs/database.md).
-5. SQLAlchemy models + Alembic initial migration.
-6. Postgres in Docker + `alembic upgrade head` (tables created).
+1. Project split, env config, FastAPI core, health.
+2. DB design, models, Alembic, tables in Postgres.
+3. Auth: login / refresh / logout / me, bcrypt, JWT access + hashed refresh tokens, role deps.
 
 ## Next
 
-1. **Auth (JWT, admin / editor)** — schemas, login, password hash, route deps
-2. **Products + nested APIs** — CRUD + materials / sustainability / certs / docs / images
-3. **Publish / QR / public passport / scans**
-4. **Dashboard + analytics**
-5. **Seed + tests**, then frontend
+1. Products + nested APIs
+2. Publish / QR / public passport / scans
+3. Dashboard + analytics
+4. More seed + tests, then frontend
 
 ## Run
 
 ```bash
-# repo root — start DB
 docker compose up db
-
-# backend — create tables
+cd backend
 APP_ENV=local uv run alembic upgrade head
-
+APP_ENV=local uv run python -m scripts.seed_users
 APP_ENV=local uv run uvicorn app.main:app --reload
 ```
+
+Seed users (dev only):
+
+- `admin@example.com` / `admin1234`
+- `editor@example.com` / `editor1234`
+
+Auth:
+
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me` (Bearer access token)
+
+Docs: http://localhost:8000/docs

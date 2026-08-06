@@ -14,6 +14,7 @@ from app.core.enums import UserRole
 from app.database.base import Base
 
 if TYPE_CHECKING:
+    from app.auth.models import RefreshToken
     from app.products.models import Product
 
 
@@ -43,5 +44,7 @@ class User(Base):
         onupdate=func.now(),
     )
 
-    # Products this user created (back_populates links both sides).
     products: Mapped[list[Product]] = relationship(back_populates="created_by")
+    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
