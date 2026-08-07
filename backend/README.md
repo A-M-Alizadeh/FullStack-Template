@@ -33,7 +33,17 @@ tests/
 
 ## Next
 
-1. Tests, then frontend
+1. Frontend
+
+## Tests
+
+Uses a separate Postgres DB `dpp_test` (created automatically).
+
+```bash
+docker compose up db
+cd backend
+APP_ENV=local uv run pytest
+```
 
 ## Run
 

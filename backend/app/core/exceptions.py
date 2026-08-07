@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import FastAPI, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -29,10 +30,11 @@ def register_exception_handlers(app: FastAPI) -> None:
         exc: RequestValidationError,
     ) -> JSONResponse:
         request_id = getattr(request.state, "request_id", None)
+        # jsonable_encoder: pydantic ctx may contain raw Exception objects
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
-                "detail": exc.errors(),
+                "detail": jsonable_encoder(exc.errors()),
                 "request_id": request_id,
             },
         )
