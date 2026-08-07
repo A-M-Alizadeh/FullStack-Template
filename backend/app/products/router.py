@@ -2,11 +2,14 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import FileResponse
 
-from app.auth.deps import DbSession, RequireEditorOrAdmin
+from app.auth.deps import AppSettings, DbSession, FileStorage, RequireEditorOrAdmin
+from app.passport import service as passport_service
 from app.products import service as products_service
 from app.products.nested_router import router as nested_router
+from app.schemas.passport import PublishResponse
 from app.schemas.products import ProductCreate, ProductResponse, ProductUpdate
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -58,3 +61,38 @@ def delete_product(
     _: RequireEditorOrAdmin,
 ) -> None:
     products_service.delete_product(db, product_id)
+
+
+@router.post(
+    "/{product_id}/publish",
+    response_model=PublishResponse,
+    tags=["passport"],
+)
+def publish_product(
+    product_id: UUID,
+    db: DbSession,
+    settings: AppSettings,
+    storage: FileStorage,
+    _: RequireEditorOrAdmin,
+) -> PublishResponse:
+    return passport_service.publish_product(
+        db, product_id, settings=settings, storage=storage
+    )
+
+
+@router.get("/{product_id}/passport/qr", tags=["passport"])
+def download_product_qr(
+    product_id: UUID,
+    db: DbSession,
+    storage: FileStorage,
+    _: RequireEditorOrAdmin,
+) -> FileResponse:
+    passport = passport_service.get_passport_for_product(db, product_id)
+    if passport is None:
+        raise HTTPException(status_code=404, detail="Passport not found")
+    path = storage.path(passport.qr_code_path)
+    return FileResponse(
+        path,
+        filename=f"{passport.public_uuid}.png",
+        media_type="image/png",
+    )
