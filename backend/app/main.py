@@ -9,6 +9,22 @@ from app.core.exceptions import register_exception_handlers
 from app.core.logging import setup_logging
 from app.core.middleware import RequestContextMiddleware
 
+OPENAPI_TAGS = [
+    {"name": "health", "description": "Liveness"},
+    {"name": "auth", "description": "Login, refresh, logout"},
+    {"name": "products", "description": "Product CRUD"},
+    {"name": "materials", "description": "Product materials"},
+    {"name": "sustainability", "description": "Product sustainability"},
+    {"name": "certifications", "description": "Product certifications"},
+    {"name": "documents", "description": "Product documents"},
+    {"name": "images", "description": "Product images"},
+    {"name": "lookups", "description": "Cert types and authorities"},
+    {"name": "publish", "description": "Publish product and download QR"},
+    {"name": "passport", "description": "Public passport (no auth)"},
+    {"name": "dashboard", "description": "Summary counts"},
+    {"name": "analytics", "description": "QR scan analytics"},
+]
+
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -20,6 +36,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
+        openapi_tags=OPENAPI_TAGS,
     )
 
     app.add_middleware(

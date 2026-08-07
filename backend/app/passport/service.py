@@ -9,6 +9,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.config import Settings
@@ -118,7 +119,16 @@ def publish_product(
     )
     product.status = ProductStatus.PUBLISHED
     db.add(passport)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Concurrent publish: unique(product_id) on passports wins.
+        db.rollback()
+        storage.delete(qr_key)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Product already published",
+        ) from None
     db.refresh(passport)
 
     logger.info(

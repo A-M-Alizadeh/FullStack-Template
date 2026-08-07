@@ -101,6 +101,29 @@ def client(db: Session, storage: LocalStorage) -> Generator[TestClient, None, No
 
 
 @pytest.fixture
+def parallel_client(
+    storage: LocalStorage,
+) -> Generator[TestClient, None, None]:
+    """Client with a fresh DB session per request (needed for concurrency)."""
+
+    def override_db() -> Generator[Session, None, None]:
+        session = TestingSessionLocal()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    def override_storage() -> LocalStorage:
+        return storage
+
+    app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[get_file_storage] = override_storage
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def admin_user(db: Session) -> User:
     user = User(
         email="admin@example.com",

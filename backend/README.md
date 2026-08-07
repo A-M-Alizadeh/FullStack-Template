@@ -30,10 +30,13 @@ tests/
 5. Nested product data: materials, sustainability, certifications, documents, images.
 6. Publish + QR + public passport + scan tracking.
 7. Dashboard + analytics.
+8. Unit + integration tests (including cascade / rollback / concurrency).
 
 ## Next
 
 1. Frontend
+
+Swagger groups endpoints by tag (`products`, `materials`, `publish`, `passport`, …) — see `/docs`.
 
 ## Tests
 

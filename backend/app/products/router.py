@@ -12,11 +12,12 @@ from app.products.nested_router import router as nested_router
 from app.schemas.passport import PublishResponse
 from app.schemas.products import ProductCreate, ProductResponse, ProductUpdate
 
-router = APIRouter(prefix="/products", tags=["products"])
+# No default tags on the parent — nested routes keep their own Swagger groups.
+router = APIRouter(prefix="/products")
 router.include_router(nested_router)
 
 
-@router.get("", response_model=list[ProductResponse])
+@router.get("", response_model=list[ProductResponse], tags=["products"])
 def list_products(
     db: DbSession,
     _: RequireEditorOrAdmin,
@@ -26,7 +27,12 @@ def list_products(
     return products_service.list_products(db, skip=skip, limit=limit)
 
 
-@router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=ProductResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["products"],
+)
 def create_product(
     body: ProductCreate,
     db: DbSession,
@@ -35,7 +41,7 @@ def create_product(
     return products_service.create_product(db, data=body, user=user)
 
 
-@router.get("/{product_id}", response_model=ProductResponse)
+@router.get("/{product_id}", response_model=ProductResponse, tags=["products"])
 def get_product(
     product_id: UUID,
     db: DbSession,
@@ -44,7 +50,7 @@ def get_product(
     return products_service.get_product_response(db, product_id)
 
 
-@router.patch("/{product_id}", response_model=ProductResponse)
+@router.patch("/{product_id}", response_model=ProductResponse, tags=["products"])
 def update_product(
     product_id: UUID,
     body: ProductUpdate,
@@ -54,7 +60,11 @@ def update_product(
     return products_service.update_product(db, product_id, data=body)
 
 
-@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{product_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["products"],
+)
 def delete_product(
     product_id: UUID,
     db: DbSession,
@@ -66,7 +76,7 @@ def delete_product(
 @router.post(
     "/{product_id}/publish",
     response_model=PublishResponse,
-    tags=["passport"],
+    tags=["publish"],
 )
 def publish_product(
     product_id: UUID,
@@ -80,7 +90,7 @@ def publish_product(
     )
 
 
-@router.get("/{product_id}/passport/qr", tags=["passport"])
+@router.get("/{product_id}/passport/qr", tags=["publish"])
 def download_product_qr(
     product_id: UUID,
     db: DbSession,
