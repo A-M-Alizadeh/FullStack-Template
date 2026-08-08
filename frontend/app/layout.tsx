@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+
 import { AppProviders } from "@/components/AppProviders";
+import { getAppName } from "@/lib/env";
+
 import "./globals.css";
 
-const appName = process.env.NEXT_PUBLIC_APP_NAME;
-
 export const metadata: Metadata = {
-  title: appName,
+  title: getAppName(),
   description: "Manage and publish digital product passports",
 };
 

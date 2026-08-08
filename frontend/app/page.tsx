@@ -2,7 +2,10 @@
 
 import { Box, Typography } from "@mui/material";
 
-export default function Home() {
+import { getAppName } from "@/lib/env";
+
+/** Temporary home — replaced by auth redirect / dashboard in later steps. */
+export default function HomePage() {
   return (
     <Box
       component="main"
@@ -15,7 +18,7 @@ export default function Home() {
       }}
     >
       <Typography variant="h4" component="h1">
-        {process.env.NEXT_PUBLIC_APP_NAME}
+        {getAppName()}
       </Typography>
     </Box>
   );

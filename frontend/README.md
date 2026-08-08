@@ -24,6 +24,20 @@ hooks/                  # shared hooks
 
 Expand by adding: `store/api/<domain>.ts`, a route under `app/`, and components under `components/` or `features/<domain>/`.
 
+## Testability
+
+Keep logic out of pages/components so it stays easy to unit-test later:
+
+| Layer | What goes here | Test style |
+|-------|----------------|------------|
+| `lib/` | Pure helpers (env, formatters, mappers) | Unit, no React |
+| `store/` / `store/api/` | Auth state, RTK Query endpoints, transforms | Unit / MSW |
+| `hooks/` | Reusable behavior | React Testing Library |
+| `components/` / `features/` | UI only — call hooks/store, little business logic | RTL |
+| `app/` | Routing + composition only | Light / e2e |
+
+Rule: if it isn’t rendering UI, it shouldn’t live in a `page.tsx`.
+
 ## Env
 
 ```bash
@@ -100,7 +114,8 @@ Empty/error states, small i18n hook point (optional), README sync.
 
 0. Next.js + MUI stub scaffold.
 0. Backend httpOnly refresh cookie (on `feat/frontend`).
+1. Folders (`lib`, `theme`, `types`, `hooks`, `features`) + env helper + MUI theme + providers.
 
 ## Next
 
-1. Folders + config + theme + providers.
+2. RTK store + API layer (`store/`, auth slice, `baseApi`).
