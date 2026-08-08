@@ -124,7 +124,8 @@ Empty/error states, small i18n hook point (optional), README sync.
 1. Folders (`lib`, `theme`, `types`, `hooks`, `features`) + env helper + MUI theme + providers.
 2. RTK store + `baseQuery` (credentials + reauth) + `authApi` + memory auth slice.
 3. Routes `(auth)` / `(backoffice)` / `passport/[uuid]`, AppShell, AuthGate (`lib/authSession` bootstrap).
+4. Login form (RHF + Zod) → access cookie session + `/me` → dashboard.
 
 ## Next
 
-4. Login form + session wiring.
+5. Products list / create / edit (+ nested).
