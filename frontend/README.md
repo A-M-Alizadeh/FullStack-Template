@@ -128,7 +128,8 @@ Empty/error states, small i18n hook point (optional), README sync.
 5. Products list / create / edit + nested (materials, sustainability, certs, docs, images).
 6. Publish + QR (panel on product editor; download PNG).
 7. Dashboard + analytics (read-only RTK pages).
+8. Public passport (`/passport/[uuid]`, forwards `?src=qr`; no remount refetch).
 
 ## Next
 
-8. Public passport (`/passport/[uuid]`, forward `?src=qr`).
+9. Polish (empty/error states, README sync).
