@@ -14,16 +14,21 @@ class LoginRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str = Field(min_length=1)
+    """Optional body fallback; browsers use the httpOnly cookie."""
+
+    refresh_token: str | None = None
 
 
 class LogoutRequest(BaseModel):
-    refresh_token: str = Field(min_length=1)
+    """Optional body fallback; browsers use the httpOnly cookie."""
+
+    refresh_token: str | None = None
 
 
-class TokenResponse(BaseModel):
+class AccessTokenResponse(BaseModel):
+    """Access JWT only — refresh is httpOnly cookie, not in JSON."""
+
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
 
 

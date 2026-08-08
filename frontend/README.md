@@ -1,15 +1,28 @@
 # Frontend
 
-Next.js + TypeScript + MUI.
+Next.js (App Router) + TypeScript + MUI + Redux Toolkit / RTK Query.
+
+Talks to the FastAPI backend. No Next.js API routes for business logic (call FastAPI directly).
+
+## Target layout
 
 ```
-app/          routes
-components/
-hooks/
-services/     API calls
-types/
-public/
+app/                    # routes only (App Router)
+  (auth)/               # login (no app chrome)
+  (backoffice)/         # dashboard, products, … (shared shell)
+  passport/[uuid]/     # public passport
+components/             # shared UI (layout, feedback, form bits)
+features/               # domain UI pieces if a page grows (optional early)
+store/                  # RTK store, api base, slices
+  api/                  # RTK Query endpoints (auth, products, …)
+theme/                  # MUI theme
+types/                  # shared TS types
+lib/                    # small helpers (env, paths)
+public/                 # static files (favicon, …)
+hooks/                  # shared hooks
 ```
+
+Expand by adding: `store/api/<domain>.ts`, a route under `app/`, and components under `components/` or `features/<domain>/`.
 
 ## Env
 
@@ -17,7 +30,7 @@ public/
 cp .env.local.example .env.local
 ```
 
-- `NEXT_PUBLIC_API_URL` — backend base URL
+- `NEXT_PUBLIC_API_URL` — backend API prefix (e.g. `http://localhost:8000/api/v1`)
 - `NEXT_PUBLIC_APP_NAME` — app title
 
 ## Run
@@ -27,4 +40,67 @@ npm i
 npm run dev
 ```
 
-Still a stub page. Back office + public passport come after the API domains are in place.
+App: http://localhost:3000 — API must be up on :8000.
+
+## Auth model (with backend)
+
+- Refresh token: httpOnly cookie (set by FastAPI)
+- Access token: in memory only (RTK auth slice); `Authorization: Bearer …`
+- Requests use `credentials: "include"`
+- Reload → `/auth/refresh` via cookie → new access in memory
+
+Backend cookie support is a small step before frontend auth UI (see steps below).
+
+## Steps
+
+### 0. Backend: httpOnly refresh cookie (short)
+
+Login/refresh/logout set or clear refresh cookie; CORS `allow_credentials`; access still Bearer. Keep tests green.
+
+### 1. Folders + config + theme
+
+Create the layout above. Wire env helper, MUI theme in `theme/`, `AppProviders` (theme + later Redux). No real pages yet.
+
+### 2. RTK store + API layer
+
+- `store/index.ts` — configureStore
+- `store/api/baseApi.ts` — fetchBaseQuery → FastAPI, credentials, Bearer from auth state, 401 → refresh once
+- Empty endpoint modules ready to grow (`authApi`, `productsApi`, …)
+- `store/authSlice.ts` — access token + user in memory
+
+### 3. App shell + routing
+
+Route groups: `(auth)`, `(backoffice)`, public `passport/[uuid]`. Back-office layout (nav). Auth gate: redirect to login if no access (and refresh failed).
+
+### 4. Login + session
+
+Login form → set cookie (backend) + store access/user. Logout clears cookie + memory. `/me` on bootstrap when access exists.
+
+### 5. Products
+
+List / create / edit + nested sections (materials, sustainability, certs, docs, images) via RTK Query. Loading skeletons, basic Zod/RHF validation.
+
+### 6. Publish + QR
+
+Publish action, show QR / download from API.
+
+### 7. Dashboard + analytics
+
+Read-only pages on back-office nav.
+
+### 8. Public passport
+
+`/passport/[uuid]` — no auth; forward `?src=qr` to API.
+
+### 9. Polish
+
+Empty/error states, small i18n hook point (optional), README sync.
+
+## Done so far
+
+0. Next.js + MUI stub scaffold.
+0. Backend httpOnly refresh cookie (on `feat/frontend`).
+
+## Next
+
+1. Folders + config + theme + providers.

@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = Field(default=60, ge=1)
     refresh_expire_days: int = Field(default=14, ge=1)
 
+    # Cross-origin SPA (e.g. :3000 → :8000) needs SameSite=none + Secure.
+    # Chromium treats http://localhost as OK for Secure cookies.
+    cookie_secure: bool = True
+    cookie_samesite: str = "none"
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def database_url(self) -> str:

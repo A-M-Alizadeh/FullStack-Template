@@ -8,12 +8,13 @@ from uuid import uuid4
 import jwt
 from fastapi.testclient import TestClient
 
+from app.auth.cookies import REFRESH_COOKIE
 from app.core.config import get_settings
 from app.users.models import User
 
 
 def test_login_ok(client: TestClient, admin_user: User):
-    """Valid credentials return access and refresh tokens."""
+    """Valid credentials return access JWT and set refresh cookie."""
     r = client.post(
         "/api/v1/auth/login",
         json={"email": admin_user.email, "password": "admin-pass"},
@@ -21,7 +22,8 @@ def test_login_ok(client: TestClient, admin_user: User):
     assert r.status_code == 200
     body = r.json()
     assert body["access_token"]
-    assert body["refresh_token"]
+    assert "refresh_token" not in body
+    assert client.cookies.get(REFRESH_COOKIE)
 
 
 def test_login_bad_password(client: TestClient, admin_user: User):
@@ -86,41 +88,46 @@ def test_me_expired_token(client: TestClient, admin_user: User):
     assert r.status_code == 401
 
 
-def test_refresh_ok(client: TestClient, admin_user: User):
-    """Refresh returns a new token pair and rotates the refresh token."""
+def test_refresh_ok_via_cookie(client: TestClient, admin_user: User):
+    """Refresh uses httpOnly cookie and rotates it."""
     login = client.post(
         "/api/v1/auth/login",
         json={"email": admin_user.email, "password": "admin-pass"},
-    ).json()
-    r = client.post(
-        "/api/v1/auth/refresh",
-        json={"refresh_token": login["refresh_token"]},
     )
+    assert login.status_code == 200
+    old_cookie = client.cookies.get(REFRESH_COOKIE)
+    assert old_cookie
+
+    r = client.post("/api/v1/auth/refresh")
     assert r.status_code == 200
     assert r.json()["access_token"]
-    assert r.json()["refresh_token"] != login["refresh_token"]
+    assert "refresh_token" not in r.json()
+    assert client.cookies.get(REFRESH_COOKIE)
+    assert client.cookies.get(REFRESH_COOKIE) != old_cookie
 
 
 def test_refresh_after_logout(client: TestClient, admin_user: User):
-    """Refresh token cannot be used after logout."""
-    login = client.post(
+    """Refresh cookie cannot be used after logout."""
+    client.post(
         "/api/v1/auth/login",
         json={"email": admin_user.email, "password": "admin-pass"},
-    ).json()
-    out = client.post(
-        "/api/v1/auth/logout",
-        json={"refresh_token": login["refresh_token"]},
     )
+    stolen = client.cookies.get(REFRESH_COOKIE)
+    assert stolen
+
+    out = client.post("/api/v1/auth/logout")
     assert out.status_code == 204
+
+    # Cookie cleared on client jar; simulate stolen cookie still presented.
     r = client.post(
         "/api/v1/auth/refresh",
-        json={"refresh_token": login["refresh_token"]},
+        cookies={REFRESH_COOKIE: stolen},
     )
     assert r.status_code == 401
 
 
 def test_refresh_unknown_token(client: TestClient):
-    """Unknown refresh token returns 401."""
+    """Unknown refresh token in body returns 401."""
     r = client.post(
         "/api/v1/auth/refresh",
         json={"refresh_token": "totally-fake"},

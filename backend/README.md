@@ -70,10 +70,12 @@ Demo product SKU: `DEMO-001`. `seed_scans` publishes it (if needed) and adds sam
 
 Auth:
 
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/auth/me` (Bearer access token)
+- `POST /api/v1/auth/login` — access JWT in JSON; refresh in httpOnly cookie
+- `POST /api/v1/auth/refresh` — cookie (or optional body); new access + rotated cookie
+- `POST /api/v1/auth/logout` — revoke + clear cookie
+- `GET /api/v1/auth/me` — Bearer access token
+
+Frontend must call auth with `credentials: "include"`. Access token stays in memory; refresh is cookie-only.
 
 Products (admin or editor):
 

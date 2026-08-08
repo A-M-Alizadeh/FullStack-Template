@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -22,10 +23,17 @@ from app.auth.security import (
 )
 from app.core.config import Settings
 from app.core.enums import UserRole
-from app.schemas.auth import TokenResponse
 from app.users.models import User
 
 logger = logging.getLogger("app.auth")
+
+
+@dataclass(frozen=True)
+class IssuedTokens:
+    """Access JWT + raw refresh (refresh goes to httpOnly cookie, not JSON)."""
+
+    access_token: str
+    refresh_token: str
 
 
 def get_user_by_email(db: Session, email: str) -> User | None:
@@ -36,7 +44,7 @@ def get_user_by_id(db: Session, user_id: UUID) -> User | None:
     return db.get(User, user_id)
 
 
-def _issue_tokens(db: Session, user: User, settings: Settings) -> TokenResponse:
+def _issue_tokens(db: Session, user: User, settings: Settings) -> IssuedTokens:
     access = create_access_token(
         user_id=user.id,
         role=user.role.value,
@@ -51,7 +59,7 @@ def _issue_tokens(db: Session, user: User, settings: Settings) -> TokenResponse:
         )
     )
     db.commit()
-    return TokenResponse(access_token=access, refresh_token=raw_refresh)
+    return IssuedTokens(access_token=access, refresh_token=raw_refresh)
 
 
 def login(
@@ -60,7 +68,7 @@ def login(
     email: str,
     password: str,
     settings: Settings,
-) -> TokenResponse:
+) -> IssuedTokens:
     user = get_user_by_email(db, email)
     if user is None or not verify_password(password, user.password_hash):
         logger.info("login failed email=%s", email)
@@ -79,7 +87,7 @@ def refresh(
     *,
     raw_refresh_token: str,
     settings: Settings,
-) -> TokenResponse:
+) -> IssuedTokens:
     token_hash = hash_refresh_token(raw_refresh_token)
     row = db.scalar(
         select(RefreshToken).where(RefreshToken.token_hash == token_hash)
