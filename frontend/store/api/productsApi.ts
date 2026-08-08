@@ -63,6 +63,8 @@ export const productsApi = baseApi.injectEndpoints({
         { type: "Product", id },
         { type: "Products", id: "LIST" },
         { type: "ProductQr", id },
+        "Dashboard",
+        "Analytics",
       ],
     }),
 
