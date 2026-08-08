@@ -13,10 +13,17 @@ app/                    # routes only (App Router)
   passport/[uuid]/     # public passport
 components/             # shared UI (layout, feedback, form bits)
 features/               # domain UI pieces if a page grows (optional early)
-store/                  # RTK store, api base, slices
-  api/                  # RTK Query endpoints (auth, products, …)
+store/
+  index.ts              # configureStore
+  hooks.ts              # typed useAppDispatch / useAppSelector
+  StoreProvider.tsx
+  auth/authSlice.ts     # access token + user (memory only)
+  api/
+    baseQuery.ts        # fetch + cookie credentials + 401 refresh
+    baseApi.ts          # createApi shell
+    authApi.ts          # login / refresh / logout / me
 theme/                  # MUI theme
-types/                  # shared TS types
+types/                  # shared TS types (auth, …)
 lib/                    # small helpers (env, paths)
 public/                 # static files (favicon, …)
 hooks/                  # shared hooks
@@ -115,7 +122,8 @@ Empty/error states, small i18n hook point (optional), README sync.
 0. Next.js + MUI stub scaffold.
 0. Backend httpOnly refresh cookie (on `feat/frontend`).
 1. Folders (`lib`, `theme`, `types`, `hooks`, `features`) + env helper + MUI theme + providers.
+2. RTK store + `baseQuery` (credentials + reauth) + `authApi` + memory auth slice.
 
 ## Next
 
-2. RTK store + API layer (`store/`, auth slice, `baseApi`).
+3. App shell + routing (`(auth)`, `(backoffice)`, auth gate).
