@@ -125,7 +125,9 @@ Empty/error states, small i18n hook point (optional), README sync.
 2. RTK store + `baseQuery` (credentials + reauth) + `authApi` + memory auth slice.
 3. Routes `(auth)` / `(backoffice)` / `passport/[uuid]`, AppShell, AuthGate (`lib/authSession` bootstrap).
 4. Login form (RHF + Zod) → access cookie session + `/me` → dashboard.
+5. Products list / create / edit + nested (materials, sustainability, certs, docs, images).
+6. Publish + QR (panel on product editor; download PNG).
 
 ## Next
 
-5. Products list / create / edit (+ nested).
+7. Dashboard + analytics.

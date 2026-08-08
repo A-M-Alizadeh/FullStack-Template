@@ -45,6 +45,8 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        # So the SPA can read QR filename ({public_uuid}.png) after download.
+        expose_headers=["Content-Disposition"],
     )
     app.add_middleware(RequestContextMiddleware)
 

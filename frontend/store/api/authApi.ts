@@ -4,6 +4,8 @@ import { clearAuth, setAccessToken, setUser } from "../auth/authSlice";
 import { baseApi } from "./baseApi";
 
 export const authApi = baseApi.injectEndpoints({
+  // Next.js HMR re-runs this module; allow re-inject into the same baseApi.
+  overrideExisting: process.env.NODE_ENV === "development",
   endpoints: (build) => ({
     login: build.mutation<AccessTokenResponse, LoginRequest>({
       query: (body) => ({
