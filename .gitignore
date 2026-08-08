@@ -69,6 +69,7 @@ Desktop.ini
 .windsurf/
 .copilot/
 AGENTS.md
+CLAUDE.md
 *.canvas.tsx
 *.swp
 *.swo

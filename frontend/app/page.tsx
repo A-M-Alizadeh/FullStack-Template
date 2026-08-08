@@ -1,25 +1,8 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { Box, Typography } from "@mui/material";
+import { DEFAULT_AUTHENTICATED_PATH } from "@/lib/navigation";
 
-import { getAppName } from "@/lib/env";
-
-/** Temporary home — replaced by auth redirect / dashboard in later steps. */
+/** Entry → back-office; AuthGate sends anonymous users to /login. */
 export default function HomePage() {
-  return (
-    <Box
-      component="main"
-      sx={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        px: 2,
-      }}
-    >
-      <Typography variant="h4" component="h1">
-        {getAppName()}
-      </Typography>
-    </Box>
-  );
+  redirect(DEFAULT_AUTHENTICATED_PATH);
 }

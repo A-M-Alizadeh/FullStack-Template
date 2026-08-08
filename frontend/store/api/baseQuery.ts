@@ -13,7 +13,12 @@ import {
 import { getApiBaseUrl } from "@/lib/env";
 import type { AccessTokenResponse } from "@/types/auth";
 
-import { clearAuth, selectAccessToken, setAccessToken } from "../auth/authSlice";
+import {
+  clearAuth,
+  selectAccessToken,
+  setAccessToken,
+  type AuthState,
+} from "../auth/authSlice";
 
 type AppBaseQuery = BaseQueryFn<
   string | FetchArgs,
@@ -27,9 +32,7 @@ function getRawBaseQuery(): AppBaseQuery {
     baseUrl: getApiBaseUrl(),
     credentials: "include",
     prepareHeaders: (headers, { getState }) => {
-      const token = selectAccessToken(
-        getState() as { auth: { accessToken: string | null } },
-      );
+      const token = selectAccessToken(getState() as { auth: AuthState });
       if (token) {
         headers.set("Authorization", `Bearer ${token}`);
       }

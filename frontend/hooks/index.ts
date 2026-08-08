@@ -1,1 +1,2 @@
-/** Shared React hooks (auth gate, debounce, …) — add exports as they appear. */
+export { useAuthBootstrap } from "./useAuthBootstrap";
+export type { AuthBootstrapState } from "./useAuthBootstrap";

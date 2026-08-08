@@ -123,7 +123,8 @@ Empty/error states, small i18n hook point (optional), README sync.
 0. Backend httpOnly refresh cookie (on `feat/frontend`).
 1. Folders (`lib`, `theme`, `types`, `hooks`, `features`) + env helper + MUI theme + providers.
 2. RTK store + `baseQuery` (credentials + reauth) + `authApi` + memory auth slice.
+3. Routes `(auth)` / `(backoffice)` / `passport/[uuid]`, AppShell, AuthGate (`lib/authSession` bootstrap).
 
 ## Next
 
-3. App shell + routing (`(auth)`, `(backoffice)`, auth gate).
+4. Login form + session wiring.
