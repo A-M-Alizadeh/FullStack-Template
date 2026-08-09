@@ -52,11 +52,15 @@ App: http://localhost:3000 — API must be up on :8000 (`NEXT_PUBLIC_API_URL`).
 | Public passport | `/passport/{uuid}`; forwards `?src=qr` (no remount refetch) |
 | Settings | Light/dark theme + EN/IT language (localStorage); `useT` |
 
-## Testability
+## Tests
 
-| Layer | What | Test style |
-|-------|------|------------|
-| `lib/` | Pure helpers | Unit |
-| `store/` | Auth + RTK endpoints | Unit / MSW |
-| `features/` / `components/` | UI | RTL |
-| `app/` | Routes only | Light / e2e |
+```bash
+npm test          # Vitest (lib + Zod schemas)
+npm run test:watch
+```
+
+| Layer | What | Status |
+|-------|------|--------|
+| `lib/` + Zod schemas | Unit (Vitest) | Done |
+| Components | RTL | Planned |
+| E2E smoke | Playwright | Planned |
