@@ -90,3 +90,5 @@ class ProductResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     cover_image: ProductCoverImage | None = None
+    public_uuid: UUID | None = None
+    scan_count: int = 0

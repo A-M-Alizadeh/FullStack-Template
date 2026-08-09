@@ -19,7 +19,7 @@ import { useState, type ReactNode } from "react";
 
 import { useT } from "@/hooks/useT";
 import { getAppName } from "@/lib/env";
-import { BACKOFFICE_NAV, LOGIN_PATH } from "@/lib/navigation";
+import { BACKOFFICE_NAV, LOGIN_PATH, navVisibleForRole } from "@/lib/navigation";
 import { useLogoutMutation } from "@/store/api/authApi";
 import { selectUser } from "@/store/auth/authSlice";
 import { useAppSelector } from "@/store/hooks";
@@ -46,10 +46,14 @@ export function AppShell({ children }: AppShellProps) {
     }
   }
 
+  const navItems = BACKOFFICE_NAV.filter((item) =>
+    navVisibleForRole(item, user?.role),
+  );
+
   const drawer = (
     <Box sx={{ pt: 1 }}>
       <List>
-        {BACKOFFICE_NAV.map((item) => (
+        {navItems.map((item) => (
           <ListItemButton
             key={item.href}
             component={Link}

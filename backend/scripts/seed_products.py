@@ -9,6 +9,8 @@ Run after users + lookups:
 from __future__ import annotations
 
 import logging
+import struct
+import zlib
 from datetime import date
 from decimal import Decimal
 
@@ -34,6 +36,29 @@ logger = logging.getLogger("app.seed")
 
 DEMO_SKU = "DEMO-001"
 MINI_PDF = b"%PDF-1.4\n% demo seed\n"
+
+
+def _mini_png(*, size: int = 48, rgb: tuple[int, int, int] = (42, 111, 151)) -> bytes:
+    """Valid solid-color PNG for seed covers (browser-decodable)."""
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data))
+            + tag
+            + data
+            + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+        )
+
+    raw = b"".join(b"\x00" + bytes(rgb) * size for _ in range(size))
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(raw, 9))
+        + chunk(b"IEND", b"")
+    )
+
+
+MINI_PNG = _mini_png()
 
 
 def seed_products() -> None:
@@ -169,7 +194,7 @@ def seed_products() -> None:
                 product_id=product.id,
                 folder="images",
                 suffix=".png",
-                data=b"\x89PNG\r\n\x1a\n" + b"\x00" * 32,
+                data=MINI_PNG,
             )
             db.add(
                 ProductImage(
@@ -180,6 +205,13 @@ def seed_products() -> None:
                 )
             )
             logger.info("added cover image")
+        else:
+            # Repair older seeds that wrote a non-decodable PNG stub.
+            path = storage.path(has_cover.file_path)
+            if not path.is_file() or path.stat().st_size < 100:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(MINI_PNG)
+                logger.info("repaired cover image bytes id=%s", has_cover.id)
 
         db.commit()
         logger.info("demo product id=%s sku=%s", product.id, product.sku)

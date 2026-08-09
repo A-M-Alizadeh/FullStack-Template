@@ -3,6 +3,7 @@
 import { Box, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 
+import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
 import { useCreateProductMutation } from "@/store/api/productsApi";
 
@@ -20,6 +21,7 @@ const defaults: ProductFormValues = {
 };
 
 export function CreateProduct() {
+  const t = useT();
   const router = useRouter();
   const [createProduct] = useCreateProductMutation();
 
@@ -28,18 +30,18 @@ export function CreateProduct() {
       const product = await createProduct(values).unwrap();
       router.replace(`/products/${product.id}`);
     } catch (err) {
-      throw new Error(getErrorMessage(err, "Could not create product"));
+      throw new Error(getErrorMessage(err, t("products.createError")));
     }
   }
 
   return (
     <Box>
       <Typography variant="h5" component="h1" gutterBottom>
-        New product
+        {t("products.new")}
       </Typography>
       <ProductForm
         defaultValues={defaults}
-        submitLabel="Create"
+        submitLabel={t("products.create")}
         onSubmit={onSubmit}
         onCancel={() => router.push("/products")}
       />

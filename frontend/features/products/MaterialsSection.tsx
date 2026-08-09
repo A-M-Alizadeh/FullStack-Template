@@ -21,7 +21,10 @@ import {
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
+import { usePreferences } from "@/components/preferences/PreferencesProvider";
+import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
+import { tFormat } from "@/lib/i18n";
 import {
   useCreateMaterialMutation,
   useDeleteMaterialMutation,
@@ -33,6 +36,8 @@ import { materialSchema, type MaterialFormValues } from "./productSchema";
 type Props = { productId: string };
 
 export function MaterialsSection({ productId }: Props) {
+  const t = useT();
+  const { locale } = usePreferences();
   const { data, isLoading, isError, error, refetch } =
     useListMaterialsQuery(productId);
   const [createMaterial, { isLoading: creating }] = useCreateMaterialMutation();
@@ -61,16 +66,18 @@ export function MaterialsSection({ productId }: Props) {
       await createMaterial({ productId, body: values }).unwrap();
       reset();
     } catch (err) {
-      setFormError(getErrorMessage(err, "Could not add material"));
+      setFormError(getErrorMessage(err, t("materials.addError")));
     }
   }
 
   async function onDelete(materialId: string, name: string) {
-    if (!window.confirm(`Remove material “${name}”?`)) return;
+    if (!window.confirm(tFormat("materials.deleteConfirm", locale, { name }))) {
+      return;
+    }
     try {
       await deleteMaterial({ productId, materialId }).unwrap();
     } catch (err) {
-      window.alert(getErrorMessage(err, "Could not delete material"));
+      window.alert(getErrorMessage(err, t("materials.deleteError")));
     }
   }
 
@@ -84,11 +91,11 @@ export function MaterialsSection({ productId }: Props) {
         severity="error"
         action={
           <Button color="inherit" size="small" onClick={() => refetch()}>
-            Retry
+            {t("common.retry")}
           </Button>
         }
       >
-        {getErrorMessage(error, "Could not load materials")}
+        {getErrorMessage(error, t("materials.loadError"))}
       </Alert>
     );
   }
@@ -96,15 +103,15 @@ export function MaterialsSection({ productId }: Props) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {!data?.length ? (
-        <Typography color="text.secondary">No materials yet.</Typography>
+        <Typography color="text.secondary">{t("materials.empty")}</Typography>
       ) : (
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>%</TableCell>
-              <TableCell>Origin</TableCell>
-              <TableCell>Recyclable</TableCell>
+              <TableCell>{t("materials.name")}</TableCell>
+              <TableCell>{t("materials.percent")}</TableCell>
+              <TableCell>{t("materials.country")}</TableCell>
+              <TableCell>{t("materials.recyclable")}</TableCell>
               <TableCell width={56} />
             </TableRow>
           </TableHead>
@@ -114,7 +121,9 @@ export function MaterialsSection({ productId }: Props) {
                 <TableCell>{row.name}</TableCell>
                 <TableCell>{String(row.percentage)}</TableCell>
                 <TableCell>{row.country_of_origin}</TableCell>
-                <TableCell>{row.recyclable ? "Yes" : "No"}</TableCell>
+                <TableCell>
+                  {row.recyclable ? t("common.yes") : t("common.no")}
+                </TableCell>
                 <TableCell>
                   <IconButton
                     aria-label={`Delete ${row.name}`}
@@ -132,7 +141,7 @@ export function MaterialsSection({ productId }: Props) {
 
       <Box>
         <Typography variant="subtitle2" gutterBottom>
-          Add material
+          {t("materials.add")}
         </Typography>
         {formError ? (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -151,21 +160,21 @@ export function MaterialsSection({ productId }: Props) {
           }}
         >
           <TextField
-            label="Name"
+            label={t("materials.name")}
             size="small"
             error={Boolean(errors.name)}
             helperText={errors.name?.message}
             {...register("name")}
           />
           <TextField
-            label="%"
+            label={t("materials.percent")}
             size="small"
             error={Boolean(errors.percentage)}
             helperText={errors.percentage?.message}
             {...register("percentage")}
           />
           <TextField
-            label="Country"
+            label={t("materials.country")}
             size="small"
             placeholder="IT"
             slotProps={{ htmlInput: { maxLength: 2 } }}
@@ -185,12 +194,12 @@ export function MaterialsSection({ productId }: Props) {
                       onChange={(e) => field.onChange(e.target.checked)}
                     />
                   }
-                  label="Recyclable"
+                  label={t("materials.recyclable")}
                 />
               )}
             />
             <Button type="submit" variant="contained" disabled={creating}>
-              Add
+              {t("common.add")}
             </Button>
           </Box>
         </Box>

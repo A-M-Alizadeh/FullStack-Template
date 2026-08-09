@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 
 import { baseApi } from "./api/baseApi";
 import "./api/authApi";
+import "./api/usersApi";
 import "./api/productsApi";
 import "./api/dashboardApi";
 import "./api/analyticsApi";

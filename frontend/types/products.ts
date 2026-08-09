@@ -38,6 +38,8 @@ export interface Product {
   created_at: string;
   updated_at: string;
   cover_image: ProductCoverImage | null;
+  public_uuid: string | null;
+  scan_count: number;
 }
 
 export interface ProductWrite {

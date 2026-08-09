@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { Controller, useForm } from "react-hook-form";
 
+import { useT } from "@/hooks/useT";
 import { PRODUCT_CATEGORIES } from "@/types/products";
 
 import { productSchema, type ProductFormValues } from "./productSchema";
@@ -36,6 +37,7 @@ export function ProductForm({
   onSubmit,
   onCancel,
 }: Props) {
+  const t = useT();
   const {
     register,
     control,
@@ -52,7 +54,7 @@ export function ProductForm({
       await onSubmit(values);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Could not save product";
+        error instanceof Error ? error.message : t("products.saveError");
       setError("root", { message });
     }
   }
@@ -69,7 +71,7 @@ export function ProductForm({
       ) : null}
 
       <TextField
-        label="Name"
+        label={t("products.form.name")}
         fullWidth
         error={Boolean(errors.name)}
         helperText={errors.name?.message}
@@ -78,14 +80,14 @@ export function ProductForm({
 
       <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { sm: "1fr 1fr" } }}>
         <TextField
-          label="SKU"
+          label={t("products.form.sku")}
           fullWidth
           error={Boolean(errors.sku)}
           helperText={errors.sku?.message}
           {...register("sku")}
         />
         <TextField
-          label="Serial number"
+          label={t("products.form.serial")}
           fullWidth
           error={Boolean(errors.serial_number)}
           helperText={errors.serial_number?.message}
@@ -98,10 +100,12 @@ export function ProductForm({
         control={control}
         render={({ field }) => (
           <FormControl fullWidth error={Boolean(errors.category)}>
-            <InputLabel id="product-category-label">Category</InputLabel>
+            <InputLabel id="product-category-label">
+              {t("products.form.category")}
+            </InputLabel>
             <Select
               labelId="product-category-label"
-              label="Category"
+              label={t("products.form.category")}
               {...field}
             >
               {PRODUCT_CATEGORIES.map((cat) => (
@@ -119,7 +123,7 @@ export function ProductForm({
 
       <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { sm: "1fr 1fr" } }}>
         <TextField
-          label="Production date"
+          label={t("products.form.productionDate")}
           type="date"
           fullWidth
           slotProps={{ inputLabel: { shrink: true } }}
@@ -128,18 +132,20 @@ export function ProductForm({
           {...register("production_date")}
         />
         <TextField
-          label="Country of origin"
+          label={t("products.form.country")}
           placeholder="IT"
           fullWidth
           slotProps={{ htmlInput: { maxLength: 2 } }}
           error={Boolean(errors.country_of_origin)}
-          helperText={errors.country_of_origin?.message ?? "ISO alpha-2"}
+          helperText={
+            errors.country_of_origin?.message ?? t("products.form.countryHint")
+          }
           {...register("country_of_origin")}
         />
       </Box>
 
       <TextField
-        label="Description"
+        label={t("products.form.description")}
         fullWidth
         multiline
         minRows={3}
@@ -158,7 +164,7 @@ export function ProductForm({
         </Button>
         {onCancel ? (
           <Button type="button" onClick={onCancel} disabled={isSubmitting}>
-            Cancel
+            {t("common.cancel")}
           </Button>
         ) : null}
       </Box>

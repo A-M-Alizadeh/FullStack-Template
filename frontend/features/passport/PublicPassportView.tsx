@@ -64,21 +64,49 @@ export function PublicPassportView({ uuid }: Props) {
 }
 
 function PassportContent({ data }: { data: PublicPassport }) {
+  const t = useT();
   const { product } = data;
   const cover = data.images.find((img) => img.image_type === "cover");
   const gallery = data.images.filter((img) => img.id !== cover?.id);
+  const verified =
+    data.verification_status === "verified"
+      ? t("passport.verified")
+      : data.verification_status;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1.5,
+          mb: 1,
+        }}
+      >
+        <Box
+          component="img"
+          src="/brand-mark.svg"
+          alt=""
+          width={48}
+          height={48}
+          sx={{ borderRadius: 1 }}
+        />
+        <Box>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            {getAppName()}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {t("passport.brand")}
+          </Typography>
+        </Box>
+      </Box>
+
       <Box>
-        <Typography variant="overline" color="text.secondary">
-          {getAppName()}
-        </Typography>
         <Typography variant="h4" component="h1" gutterBottom>
           {product.name}
         </Typography>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 1 }}>
-          <Chip size="small" label={data.verification_status} />
+          <Chip size="small" color="success" label={verified} />
           <Chip size="small" label={`v${data.version}`} variant="outlined" />
           <Chip
             size="small"
@@ -88,7 +116,7 @@ function PassportContent({ data }: { data: PublicPassport }) {
           />
         </Box>
         <Typography variant="body2" color="text.secondary">
-          Published {formatDateTime(data.created_at)}
+          {formatDateTime(data.created_at)}
         </Typography>
       </Box>
 

@@ -20,7 +20,10 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
+import { usePreferences } from "@/components/preferences/PreferencesProvider";
+import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
+import { tFormat } from "@/lib/i18n";
 import {
   useCreateDocumentMutation,
   useDeleteDocumentMutation,
@@ -35,6 +38,8 @@ function labelDocType(value: string) {
 }
 
 export function DocumentsSection({ productId }: Props) {
+  const t = useT();
+  const { locale } = usePreferences();
   const { data, isLoading, isError, error, refetch } =
     useListDocumentsQuery(productId);
   const [createDoc, { isLoading: creating }] = useCreateDocumentMutation();
@@ -48,7 +53,7 @@ export function DocumentsSection({ productId }: Props) {
     e.preventDefault();
     setFormError(null);
     if (!file) {
-      setFormError("Choose a PDF file");
+      setFormError(t("docs.chooseRequired"));
       return;
     }
     const form = new FormData();
@@ -58,16 +63,18 @@ export function DocumentsSection({ productId }: Props) {
       await createDoc({ productId, form }).unwrap();
       setFile(null);
     } catch (err) {
-      setFormError(getErrorMessage(err, "Could not upload document"));
+      setFormError(getErrorMessage(err, t("docs.uploadError")));
     }
   }
 
   async function onDelete(id: string, name: string) {
-    if (!window.confirm(`Remove document “${name}”?`)) return;
+    if (!window.confirm(tFormat("docs.deleteConfirm", locale, { name }))) {
+      return;
+    }
     try {
       await deleteDoc({ productId, documentId: id }).unwrap();
     } catch (err) {
-      window.alert(getErrorMessage(err, "Could not delete document"));
+      window.alert(getErrorMessage(err, t("docs.deleteError")));
     }
   }
 
@@ -79,11 +86,11 @@ export function DocumentsSection({ productId }: Props) {
         severity="error"
         action={
           <Button color="inherit" size="small" onClick={() => refetch()}>
-            Retry
+            {t("common.retry")}
           </Button>
         }
       >
-        {getErrorMessage(error, "Could not load documents")}
+        {getErrorMessage(error, t("docs.loadError"))}
       </Alert>
     );
   }
@@ -91,13 +98,13 @@ export function DocumentsSection({ productId }: Props) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {!data?.length ? (
-        <Typography color="text.secondary">No documents yet.</Typography>
+        <Typography color="text.secondary">{t("docs.empty")}</Typography>
       ) : (
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Type</TableCell>
-              <TableCell>File</TableCell>
+              <TableCell>{t("docs.type")}</TableCell>
+              <TableCell>{t("docs.file")}</TableCell>
               <TableCell width={56} />
             </TableRow>
           </TableHead>
@@ -110,7 +117,7 @@ export function DocumentsSection({ productId }: Props) {
                 <TableCell>{row.original_filename}</TableCell>
                 <TableCell>
                   <IconButton
-                    aria-label={`Delete ${row.original_filename}`}
+                    aria-label={`${t("common.delete")} ${row.original_filename}`}
                     size="small"
                     onClick={() => onDelete(row.id, row.original_filename)}
                   >
@@ -129,7 +136,7 @@ export function DocumentsSection({ productId }: Props) {
         sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}
       >
         <Typography variant="subtitle2" sx={{ width: "100%" }}>
-          Upload document
+          {t("docs.upload")}
         </Typography>
         {formError ? (
           <Alert severity="error" sx={{ width: "100%" }}>
@@ -137,22 +144,22 @@ export function DocumentsSection({ productId }: Props) {
           </Alert>
         ) : null}
         <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel id="doc-type">Type</InputLabel>
+          <InputLabel id="doc-type">{t("docs.type")}</InputLabel>
           <Select
             labelId="doc-type"
-            label="Type"
+            label={t("docs.type")}
             value={docType}
             onChange={(e) => setDocType(e.target.value as DocumentType)}
           >
-            {DOCUMENT_TYPES.map((t) => (
-              <MenuItem key={t} value={t}>
-                {labelDocType(t)}
+            {DOCUMENT_TYPES.map((item) => (
+              <MenuItem key={item} value={item}>
+                {labelDocType(item)}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
         <Button variant="outlined" component="label" size="small">
-          {file ? file.name : "Choose PDF"}
+          {file ? file.name : t("docs.choosePdf")}
           <input
             type="file"
             accept="application/pdf"
@@ -161,7 +168,7 @@ export function DocumentsSection({ productId }: Props) {
           />
         </Button>
         <Button type="submit" variant="contained" disabled={creating}>
-          Upload
+          {t("common.upload")}
         </Button>
       </Box>
     </Box>

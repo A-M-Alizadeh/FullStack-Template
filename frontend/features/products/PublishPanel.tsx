@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { QueryError } from "@/components/feedback/QueryError";
+import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
 import { triggerBlobDownload } from "@/lib/downloadBlob";
 import {
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export function PublishPanel({ productId, status }: Props) {
+  const t = useT();
   const isPublished = status === "published";
   const [publish, { isLoading: publishing }] = usePublishProductMutation();
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -55,11 +57,7 @@ export function PublishPanel({ productId, status }: Props) {
   }, [qr]);
 
   async function onPublish() {
-    if (
-      !window.confirm(
-        "Publish this product? A public passport and QR code will be created. This cannot be undone from the UI.",
-      )
-    ) {
+    if (!window.confirm(t("publish.confirm"))) {
       return;
     }
     setPublishError(null);
@@ -67,7 +65,7 @@ export function PublishPanel({ productId, status }: Props) {
       const result = await publish(productId).unwrap();
       setPublicUrlFromPublish(result.passport.public_url);
     } catch (err) {
-      setPublishError(getErrorMessage(err, "Could not publish product"));
+      setPublishError(getErrorMessage(err, t("publish.error")));
     }
   }
 
@@ -99,13 +97,12 @@ export function PublishPanel({ productId, status }: Props) {
         gap: 2,
       }}
     >
-      <Typography variant="subtitle1">Publish & QR</Typography>
+      <Typography variant="subtitle1">{t("publish.title")}</Typography>
 
       {!isPublished ? (
         <>
           <Typography variant="body2" color="text.secondary">
-            Publishing creates a public passport URL and a QR code that tracks
-            scans via <code>?src=qr</code>.
+            {t("publish.draftHint")}
           </Typography>
           {publishError ? <Alert severity="error">{publishError}</Alert> : null}
           <Box>
@@ -117,7 +114,7 @@ export function PublishPanel({ productId, status }: Props) {
               {publishing ? (
                 <CircularProgress size={22} color="inherit" />
               ) : (
-                "Publish product"
+                t("publish.cta")
               )}
             </Button>
           </Box>
@@ -125,8 +122,7 @@ export function PublishPanel({ productId, status }: Props) {
       ) : (
         <>
           <Typography variant="body2" color="text.secondary">
-            This product is live. Share the passport link or download the QR
-            PNG.
+            {t("publish.live")}
           </Typography>
 
           {publicUrl ? (
@@ -174,7 +170,7 @@ export function PublishPanel({ productId, status }: Props) {
               onClick={onDownloadQr}
               disabled={!qr}
             >
-              Download QR
+              {t("publish.downloadQr")}
             </Button>
             {passportPath ? (
               <Button
@@ -183,7 +179,7 @@ export function PublishPanel({ productId, status }: Props) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Open passport
+                {t("publish.openPassport")}
               </Button>
             ) : null}
           </Box>

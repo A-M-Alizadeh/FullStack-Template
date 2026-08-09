@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
+import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
 import {
   useGetSustainabilityQuery,
@@ -37,6 +38,7 @@ const emptyValues: SustainabilityFormValues = {
 };
 
 export function SustainabilitySection({ productId }: Props) {
+  const t = useT();
   const { data, isLoading, isError, error } =
     useGetSustainabilityQuery(productId);
   const [upsert, { isLoading: saving }] = useUpsertSustainabilityMutation();
@@ -77,7 +79,7 @@ export function SustainabilitySection({ productId }: Props) {
       await upsert({ productId, body: values }).unwrap();
       setSaved(true);
     } catch (err) {
-      setSubmitError(getErrorMessage(err, "Could not save sustainability"));
+      setSubmitError(getErrorMessage(err, t("sustainability.saveError")));
     }
   }
 
@@ -88,7 +90,7 @@ export function SustainabilitySection({ productId }: Props) {
   if (isError && !missing) {
     return (
       <Alert severity="error">
-        {getErrorMessage(error, "Could not load sustainability")}
+        {getErrorMessage(error, t("sustainability.loadError"))}
       </Alert>
     );
   }
@@ -102,22 +104,24 @@ export function SustainabilitySection({ productId }: Props) {
     >
       {missing ? (
         <Typography color="text.secondary">
-          No sustainability data yet — fill in and save.
+          {t("sustainability.empty")}
         </Typography>
       ) : null}
 
       {submitError ? <Alert severity="error">{submitError}</Alert> : null}
-      {saved ? <Alert severity="success">Saved.</Alert> : null}
+      {saved ? (
+        <Alert severity="success">{t("sustainability.saved")}</Alert>
+      ) : null}
 
       <TextField
-        label="Carbon footprint"
+        label={t("sustainability.carbon")}
         fullWidth
         error={Boolean(errors.carbon_footprint)}
         helperText={errors.carbon_footprint?.message}
         {...register("carbon_footprint")}
       />
       <TextField
-        label="Water consumption"
+        label={t("sustainability.water")}
         fullWidth
         error={Boolean(errors.water_consumption)}
         helperText={errors.water_consumption?.message}
@@ -125,14 +129,14 @@ export function SustainabilitySection({ productId }: Props) {
       />
       <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { sm: "1fr 1fr" } }}>
         <TextField
-          label="Recycled material %"
+          label={t("sustainability.recycled")}
           fullWidth
           error={Boolean(errors.recycled_material_percent)}
           helperText={errors.recycled_material_percent?.message}
           {...register("recycled_material_percent")}
         />
         <TextField
-          label="Repairability score"
+          label={t("sustainability.repair")}
           fullWidth
           error={Boolean(errors.repairability_score)}
           helperText={errors.repairability_score?.message}
@@ -150,14 +154,18 @@ export function SustainabilitySection({ productId }: Props) {
                 onChange={(e) => field.onChange(e.target.checked)}
               />
             }
-            label="Product recyclable"
+            label={t("sustainability.recyclable")}
           />
         )}
       />
 
       <Box>
         <Button type="submit" variant="contained" disabled={saving}>
-          {saving ? <CircularProgress size={22} color="inherit" /> : "Save"}
+          {saving ? (
+            <CircularProgress size={22} color="inherit" />
+          ) : (
+            t("common.save")
+          )}
         </Button>
       </Box>
     </Box>

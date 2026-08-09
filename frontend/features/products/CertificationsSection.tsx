@@ -21,7 +21,10 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
+import { usePreferences } from "@/components/preferences/PreferencesProvider";
+import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
+import { tFormat } from "@/lib/i18n";
 import {
   useCreateCertificationMutation,
   useDeleteCertificationMutation,
@@ -33,6 +36,8 @@ import {
 type Props = { productId: string };
 
 export function CertificationsSection({ productId }: Props) {
+  const t = useT();
+  const { locale } = usePreferences();
   const { data, isLoading, isError, error, refetch } =
     useListCertificationsQuery(productId);
   const { data: types } = useListCertificationTypesQuery();
@@ -51,7 +56,7 @@ export function CertificationsSection({ productId }: Props) {
     e.preventDefault();
     setFormError(null);
     if (!typeId || !authorityId || !issueDate || !pdf) {
-      setFormError("Type, authority, issue date, and PDF are required");
+      setFormError(t("certs.required"));
       return;
     }
     const form = new FormData();
@@ -68,16 +73,20 @@ export function CertificationsSection({ productId }: Props) {
       setExpirationDate("");
       setPdf(null);
     } catch (err) {
-      setFormError(getErrorMessage(err, "Could not add certification"));
+      setFormError(getErrorMessage(err, t("certs.addError")));
     }
   }
 
   async function onDelete(id: string, label: string) {
-    if (!window.confirm(`Remove certification “${label}”?`)) return;
+    if (
+      !window.confirm(tFormat("certs.deleteConfirm", locale, { name: label }))
+    ) {
+      return;
+    }
     try {
       await deleteCert({ productId, certificationId: id }).unwrap();
     } catch (err) {
-      window.alert(getErrorMessage(err, "Could not delete certification"));
+      window.alert(getErrorMessage(err, t("certs.deleteError")));
     }
   }
 
@@ -89,11 +98,11 @@ export function CertificationsSection({ productId }: Props) {
         severity="error"
         action={
           <Button color="inherit" size="small" onClick={() => refetch()}>
-            Retry
+            {t("common.retry")}
           </Button>
         }
       >
-        {getErrorMessage(error, "Could not load certifications")}
+        {getErrorMessage(error, t("certs.loadError"))}
       </Alert>
     );
   }
@@ -101,15 +110,15 @@ export function CertificationsSection({ productId }: Props) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {!data?.length ? (
-        <Typography color="text.secondary">No certifications yet.</Typography>
+        <Typography color="text.secondary">{t("certs.empty")}</Typography>
       ) : (
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Type</TableCell>
-              <TableCell>Authority</TableCell>
-              <TableCell>Issued</TableCell>
-              <TableCell>Expires</TableCell>
+              <TableCell>{t("certs.type")}</TableCell>
+              <TableCell>{t("certs.authority")}</TableCell>
+              <TableCell>{t("certs.issued")}</TableCell>
+              <TableCell>{t("certs.expires")}</TableCell>
               <TableCell width={56} />
             </TableRow>
           </TableHead>
@@ -122,7 +131,7 @@ export function CertificationsSection({ productId }: Props) {
                 <TableCell>{row.expiration_date ?? "—"}</TableCell>
                 <TableCell>
                   <IconButton
-                    aria-label="Delete certification"
+                    aria-label={t("certs.deleteAria")}
                     size="small"
                     onClick={() =>
                       onDelete(row.id, row.certification_type.name)
@@ -139,7 +148,7 @@ export function CertificationsSection({ productId }: Props) {
 
       <Box>
         <Typography variant="subtitle2" gutterBottom>
-          Add certification
+          {t("certs.add")}
         </Typography>
         {formError ? (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -157,25 +166,25 @@ export function CertificationsSection({ productId }: Props) {
           }}
         >
           <FormControl fullWidth size="small" required>
-            <InputLabel id="cert-type">Type</InputLabel>
+            <InputLabel id="cert-type">{t("certs.type")}</InputLabel>
             <Select
               labelId="cert-type"
-              label="Type"
+              label={t("certs.type")}
               value={typeId}
               onChange={(e) => setTypeId(e.target.value)}
             >
-              {(types ?? []).map((t) => (
-                <MenuItem key={t.id} value={t.id}>
-                  {t.name}
+              {(types ?? []).map((item) => (
+                <MenuItem key={item.id} value={item.id}>
+                  {item.name}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
           <FormControl fullWidth size="small" required>
-            <InputLabel id="cert-auth">Authority</InputLabel>
+            <InputLabel id="cert-auth">{t("certs.authority")}</InputLabel>
             <Select
               labelId="cert-auth"
-              label="Authority"
+              label={t("certs.authority")}
               value={authorityId}
               onChange={(e) => setAuthorityId(e.target.value)}
             >
@@ -187,7 +196,7 @@ export function CertificationsSection({ productId }: Props) {
             </Select>
           </FormControl>
           <TextField
-            label="Issue date"
+            label={t("certs.issueDate")}
             type="date"
             size="small"
             required
@@ -196,7 +205,7 @@ export function CertificationsSection({ productId }: Props) {
             onChange={(e) => setIssueDate(e.target.value)}
           />
           <TextField
-            label="Expiration date"
+            label={t("certs.expirationDate")}
             type="date"
             size="small"
             slotProps={{ inputLabel: { shrink: true } }}
@@ -205,7 +214,7 @@ export function CertificationsSection({ productId }: Props) {
           />
           <Box sx={{ gridColumn: { md: "1 / -1" } }}>
             <Button variant="outlined" component="label" size="small">
-              {pdf ? pdf.name : "Choose PDF"}
+              {pdf ? pdf.name : t("certs.choosePdf")}
               <input
                 type="file"
                 accept="application/pdf"
@@ -216,7 +225,7 @@ export function CertificationsSection({ productId }: Props) {
           </Box>
           <Box>
             <Button type="submit" variant="contained" disabled={creating}>
-              Add
+              {t("common.add")}
             </Button>
           </Box>
         </Box>

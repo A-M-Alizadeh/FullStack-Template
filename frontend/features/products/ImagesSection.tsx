@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
+import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
 import {
   useCreateImageMutation,
@@ -32,6 +33,7 @@ import { IMAGE_TYPES, type ImageType } from "@/types/products";
 type Props = { productId: string };
 
 export function ImagesSection({ productId }: Props) {
+  const t = useT();
   const { data, isLoading, isError, error, refetch } =
     useListImagesQuery(productId);
   const [createImage, { isLoading: creating }] = useCreateImageMutation();
@@ -46,7 +48,7 @@ export function ImagesSection({ productId }: Props) {
     e.preventDefault();
     setFormError(null);
     if (!file) {
-      setFormError("Choose an image file");
+      setFormError(t("images.chooseRequired"));
       return;
     }
     const form = new FormData();
@@ -57,16 +59,16 @@ export function ImagesSection({ productId }: Props) {
       await createImage({ productId, form }).unwrap();
       setFile(null);
     } catch (err) {
-      setFormError(getErrorMessage(err, "Could not upload image"));
+      setFormError(getErrorMessage(err, t("images.uploadError")));
     }
   }
 
   async function onDelete(id: string) {
-    if (!window.confirm("Remove this image?")) return;
+    if (!window.confirm(t("images.deleteConfirm"))) return;
     try {
       await deleteImage({ productId, imageId: id }).unwrap();
     } catch (err) {
-      window.alert(getErrorMessage(err, "Could not delete image"));
+      window.alert(getErrorMessage(err, t("images.deleteError")));
     }
   }
 
@@ -78,11 +80,11 @@ export function ImagesSection({ productId }: Props) {
         severity="error"
         action={
           <Button color="inherit" size="small" onClick={() => refetch()}>
-            Retry
+            {t("common.retry")}
           </Button>
         }
       >
-        {getErrorMessage(error, "Could not load images")}
+        {getErrorMessage(error, t("images.loadError"))}
       </Alert>
     );
   }
@@ -90,14 +92,14 @@ export function ImagesSection({ productId }: Props) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       {!data?.length ? (
-        <Typography color="text.secondary">No images yet.</Typography>
+        <Typography color="text.secondary">{t("images.empty")}</Typography>
       ) : (
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Type</TableCell>
-              <TableCell>Sort</TableCell>
-              <TableCell>Path</TableCell>
+              <TableCell>{t("images.type")}</TableCell>
+              <TableCell>{t("images.sort")}</TableCell>
+              <TableCell>{t("images.path")}</TableCell>
               <TableCell width={56} />
             </TableRow>
           </TableHead>
@@ -120,7 +122,7 @@ export function ImagesSection({ productId }: Props) {
                 </TableCell>
                 <TableCell>
                   <IconButton
-                    aria-label="Delete image"
+                    aria-label={t("images.deleteAria")}
                     size="small"
                     onClick={() => onDelete(row.id)}
                   >
@@ -139,7 +141,7 @@ export function ImagesSection({ productId }: Props) {
         sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}
       >
         <Typography variant="subtitle2" sx={{ width: "100%" }}>
-          Upload image
+          {t("images.upload")}
         </Typography>
         {formError ? (
           <Alert severity="error" sx={{ width: "100%" }}>
@@ -147,22 +149,22 @@ export function ImagesSection({ productId }: Props) {
           </Alert>
         ) : null}
         <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel id="image-type">Type</InputLabel>
+          <InputLabel id="image-type">{t("images.type")}</InputLabel>
           <Select
             labelId="image-type"
-            label="Type"
+            label={t("images.type")}
             value={imageType}
             onChange={(e) => setImageType(e.target.value as ImageType)}
           >
-            {IMAGE_TYPES.map((t) => (
-              <MenuItem key={t} value={t}>
-                {t}
+            {IMAGE_TYPES.map((item) => (
+              <MenuItem key={item} value={item}>
+                {item}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
         <TextField
-          label="Sort"
+          label={t("images.sort")}
           size="small"
           type="number"
           value={sortOrder}
@@ -170,7 +172,7 @@ export function ImagesSection({ productId }: Props) {
           sx={{ width: 96 }}
         />
         <Button variant="outlined" component="label" size="small">
-          {file ? file.name : "Choose image"}
+          {file ? file.name : t("images.choose")}
           <input
             type="file"
             accept="image/*"
@@ -179,7 +181,7 @@ export function ImagesSection({ productId }: Props) {
           />
         </Button>
         <Button type="submit" variant="contained" disabled={creating}>
-          Upload
+          {t("common.upload")}
         </Button>
       </Box>
     </Box>

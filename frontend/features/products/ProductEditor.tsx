@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
 import {
   useGetProductQuery,
@@ -24,6 +25,7 @@ import { CertificationsSection } from "./CertificationsSection";
 import { DocumentsSection } from "./DocumentsSection";
 import { ImagesSection } from "./ImagesSection";
 import { MaterialsSection } from "./MaterialsSection";
+import { PreviewSection } from "./PreviewSection";
 import { ProductForm } from "./ProductForm";
 import type { ProductFormValues } from "./productSchema";
 import { PublishPanel } from "./PublishPanel";
@@ -32,6 +34,7 @@ import { SustainabilitySection } from "./SustainabilitySection";
 type Props = { productId: string };
 
 export function ProductEditor({ productId }: Props) {
+  const t = useT();
   const router = useRouter();
   const { data, isLoading, isError, error } = useGetProductQuery(productId);
   const [updateProduct] = useUpdateProductMutation();
@@ -49,7 +52,7 @@ export function ProductEditor({ productId }: Props) {
   if (isError || !data) {
     return (
       <Alert severity="error">
-        {getErrorMessage(error, "Product not found")}
+        {getErrorMessage(error, t("common.notFound"))}
       </Alert>
     );
   }
@@ -58,7 +61,7 @@ export function ProductEditor({ productId }: Props) {
     try {
       await updateProduct({ id: productId, body: values }).unwrap();
     } catch (err) {
-      throw new Error(getErrorMessage(err, "Could not update product"));
+      throw new Error(getErrorMessage(err, t("products.saveError")));
     }
   }
 
@@ -90,7 +93,7 @@ export function ProductEditor({ productId }: Props) {
             variant="outlined"
           />
           <Button component={Link} href="/products" size="small">
-            Back to list
+            {t("products.editor.back")}
           </Button>
         </Box>
       </Box>
@@ -104,12 +107,13 @@ export function ProductEditor({ productId }: Props) {
         scrollButtons="auto"
         sx={{ mb: 3, borderBottom: 1, borderColor: "divider" }}
       >
-        <Tab label="Details" />
-        <Tab label="Materials" />
-        <Tab label="Sustainability" />
-        <Tab label="Certifications" />
-        <Tab label="Documents" />
-        <Tab label="Images" />
+        <Tab label={t("products.tab.details")} />
+        <Tab label={t("products.tab.materials")} />
+        <Tab label={t("products.tab.sustainability")} />
+        <Tab label={t("products.tab.certifications")} />
+        <Tab label={t("products.tab.documents")} />
+        <Tab label={t("products.tab.images")} />
+        <Tab label={t("products.tab.preview")} />
       </Tabs>
 
       {tab === 0 ? (
@@ -124,7 +128,7 @@ export function ProductEditor({ productId }: Props) {
             production_date: data.production_date,
             country_of_origin: data.country_of_origin,
           }}
-          submitLabel="Save changes"
+          submitLabel={t("products.editor.save")}
           onSubmit={onSave}
           onCancel={() => router.push("/products")}
         />
@@ -135,6 +139,7 @@ export function ProductEditor({ productId }: Props) {
       {tab === 3 ? <CertificationsSection productId={productId} /> : null}
       {tab === 4 ? <DocumentsSection productId={productId} /> : null}
       {tab === 5 ? <ImagesSection productId={productId} /> : null}
+      {tab === 6 ? <PreviewSection publicUuid={data.public_uuid} /> : null}
     </Box>
   );
 }
