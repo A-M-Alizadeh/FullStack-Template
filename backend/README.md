@@ -23,11 +23,11 @@ tests/
 
 ## Status
 
-Auth (JWT access + httpOnly refresh cookie), product CRUD + nested resources, publish/QR, public passport + scan tracking, dashboard, analytics, seeds, unit/integration tests.
+Auth (JWT access + httpOnly refresh cookie), product CRUD + nested resources, publish/QR, public passport + scan tracking, dashboard, analytics, **admin-only user CRUD**, seeds, unit/integration tests.
 
-Swagger: `/docs` (tags: `products`, `materials`, `publish`, `passport`, …).
+Swagger: `/docs` (tags include `products`, `users`, `publish`, `passport`, …).
 
-Frontend lives in `../frontend`.
+Architecture overview: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md). Frontend: `../frontend`.
 
 ## Tests
 
@@ -89,5 +89,10 @@ Dashboard / analytics (admin or editor):
 
 - `GET /api/v1/dashboard`
 - `GET /api/v1/analytics`
+
+Users (admin only):
+
+- `GET/POST /api/v1/users`
+- `PATCH/DELETE /api/v1/users/{id}`
 
 Docs: http://localhost:8000/docs

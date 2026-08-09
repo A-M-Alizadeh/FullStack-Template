@@ -12,15 +12,18 @@ app/
   (backoffice)/           # AuthGate + AppShell
     dashboard/
     products/             # list, new, [id]
+    passports/
     analytics/
+    users/                # admin only (RoleGate)
+    settings/
   passport/[uuid]/       # public passport (no auth)
-components/               # shell, auth gates, shared feedback
-features/                 # domain UI (auth, products, dashboard, …)
+components/               # shell, AuthGate, RoleGate, feedback
+features/                 # domain UI
 store/
-  api/                    # RTK Query (auth, products, dashboard, analytics, passport)
+  api/                    # RTK Query endpoints
   auth/                   # access token + user (memory only)
-lib/                      # env, errors, i18n, helpers
-hooks/                    # useAuthBootstrap, useT
+lib/                      # env, errors, i18n, navigation
+hooks/
 theme/
 types/
 ```
@@ -35,22 +38,27 @@ npm run dev
 
 App: http://localhost:3000 — API must be up on :8000 (`NEXT_PUBLIC_API_URL`).
 
-## Auth
+## Auth & roles
 
-- Refresh token: httpOnly cookie from FastAPI (`credentials: "include"`)
+- Refresh token: httpOnly cookie (`credentials: "include"`)
 - Access token: in-memory RTK slice; `Authorization: Bearer …`
 - Reload → `/auth/refresh` via cookie → new access
+- Nav items can set `roles` (e.g. Users = admin)
+- Pages use `RoleGate` where needed; API still enforces roles
 
 ## Shipped
 
 | Area | Notes |
 |------|--------|
 | Login / session | RHF + Zod; AuthGate bootstrap |
-| Products | CRUD + nested tabs (materials, sustainability, certs, docs, images) |
-| Publish + QR | Panel on product editor; download PNG |
-| Dashboard / analytics | Read-only summaries and scan tables |
-| Public passport | `/passport/{uuid}`; forwards `?src=qr` (no remount refetch) |
-| Settings | Light/dark theme + EN/IT language (localStorage); `useT` |
+| Products | CRUD + nested tabs; list cover / QR modal / views |
+| Publish + QR | Editor panel + QR dialog |
+| Preview tab | Iframe of public passport after publish |
+| Passports | Published products list |
+| Users | Admin CRUD (hidden from editors) |
+| Dashboard / analytics | Summaries and scan tables |
+| Public passport | Brand mark; `?src=qr` scan tracking |
+| Settings | Light/dark + EN/IT (`useT`) |
 
 ## Tests
 
@@ -62,25 +70,8 @@ npm run test:watch
 E2E smoke (API + DB must be up with seed users):
 
 ```bash
-# once per machine after npm i
-npx playwright install chromium
-
-# terminal A — API
-docker compose up db
-cd backend && APP_ENV=local uv run uvicorn app.main:app --reload
-
-# terminal B
-cd frontend && npm run test:e2e
-
-# watch the browser (slowed)
+npx playwright install chromium   # once
+npm run test:e2e
 npm run test:e2e:headed
-
-# interactive UI — click ▷ on the test; enable “Show browser”
 npm run test:e2e:ui
 ```
-
-| Layer | What | Status |
-|-------|------|--------|
-| `lib/` + Zod schemas | Unit (Vitest) | Done |
-| Components | RTL (Login, Settings) | Done |
-| E2E smoke | Playwright (`e2e/smoke.spec.ts`) | Done |

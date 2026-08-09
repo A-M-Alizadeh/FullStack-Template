@@ -2,7 +2,7 @@
 
 import { Box, Typography } from "@mui/material";
 
-import { AdminGate } from "@/components/auth/AdminGate";
+import { RoleGate } from "@/components/auth/RoleGate";
 import { UsersList } from "@/features/users/UsersList";
 import { useT } from "@/hooks/useT";
 
@@ -10,7 +10,7 @@ export default function UsersPage() {
   const t = useT();
 
   return (
-    <AdminGate>
+    <RoleGate roles={["admin"]}>
       <Box>
         <Typography variant="h5" component="h1" gutterBottom>
           {t("users.title")}
@@ -20,6 +20,6 @@ export default function UsersPage() {
         </Typography>
         <UsersList />
       </Box>
-    </AdminGate>
+    </RoleGate>
   );
 }
