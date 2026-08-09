@@ -55,12 +55,32 @@ App: http://localhost:3000 — API must be up on :8000 (`NEXT_PUBLIC_API_URL`).
 ## Tests
 
 ```bash
-npm test          # Vitest (lib + Zod schemas)
+npm test              # Vitest (unit + RTL)
 npm run test:watch
+```
+
+E2E smoke (API + DB must be up with seed users):
+
+```bash
+# once per machine after npm i
+npx playwright install chromium
+
+# terminal A — API
+docker compose up db
+cd backend && APP_ENV=local uv run uvicorn app.main:app --reload
+
+# terminal B
+cd frontend && npm run test:e2e
+
+# watch the browser (slowed)
+npm run test:e2e:headed
+
+# interactive UI — click ▷ on the test; enable “Show browser”
+npm run test:e2e:ui
 ```
 
 | Layer | What | Status |
 |-------|------|--------|
 | `lib/` + Zod schemas | Unit (Vitest) | Done |
 | Components | RTL (Login, Settings) | Done |
-| E2E smoke | Playwright | Planned |
+| E2E smoke | Playwright (`e2e/smoke.spec.ts`) | Done |
