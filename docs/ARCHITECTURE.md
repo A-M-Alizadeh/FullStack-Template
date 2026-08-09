@@ -98,8 +98,8 @@ Aligned with assessment bonuses / production hardening:
 
 | Area | Idea |
 |------|------|
-| Soft delete | `deleted_at` on products (and optionally users) |
-| Search / filters | Full-text or ILIKE + status filters; UI pagination |
+| Soft delete | **Done** — `products.deleted_at`; lists/get hide deleted rows; `POST …/restore` + UI Undo |
+| Search / filters | **Done** — `q` + `status` on product list; UI pagination |
 | Audit log | Postgres table for publish / user admin actions |
 | Passport versioning | New passport version on re-publish; keep history |
 | Object storage | Swap `LocalStorage` for MinIO/S3 |

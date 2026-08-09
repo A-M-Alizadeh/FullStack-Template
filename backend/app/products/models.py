@@ -16,12 +16,14 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -44,6 +46,15 @@ class Product(Base):
     """Main back-office product (draft until published)."""
 
     __tablename__ = "products"
+    __table_args__ = (
+        # Soft-deleted rows keep their SKU; only active rows must be unique.
+        Index(
+            "uq_products_sku_active",
+            "sku",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -52,7 +63,7 @@ class Product(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), index=True
     )
     name: Mapped[str] = mapped_column(String(255))
-    sku: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    sku: Mapped[str] = mapped_column(String(100), index=True)
     serial_number: Mapped[str] = mapped_column(String(100))
     category: Mapped[ProductCategory] = mapped_column(
         Enum(
@@ -71,6 +82,9 @@ class Product(Base):
             values_callable=lambda enum_cls: [item.value for item in enum_cls],
         ),
         default=ProductStatus.DRAFT,
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

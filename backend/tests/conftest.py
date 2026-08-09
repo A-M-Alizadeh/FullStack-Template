@@ -59,6 +59,8 @@ from app.products.models import CertificationType, IssuingAuthority  # noqa: E40
 from app.users.models import User  # noqa: E402
 
 TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+# Recreate schema each session so model changes (e.g. new columns) apply to dpp_test.
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 

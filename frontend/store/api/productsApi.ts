@@ -8,6 +8,8 @@ import type {
   Product,
   ProductDocument,
   ProductImage,
+  ProductListParams,
+  ProductListResponse,
   ProductWrite,
   Sustainability,
   SustainabilityWrite,
@@ -17,12 +19,23 @@ import { baseApi } from "./baseApi";
 
 export const productsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
-    listProducts: build.query<Product[], void>({
-      query: () => "/products",
+    listProducts: build.query<ProductListResponse, ProductListParams | void>({
+      query: (params) => ({
+        url: "/products",
+        params: {
+          skip: params?.skip ?? 0,
+          limit: params?.limit ?? 20,
+          ...(params?.q ? { q: params.q } : {}),
+          ...(params?.status ? { status: params.status } : {}),
+        },
+      }),
       providesTags: (result) =>
         result
           ? [
-              ...result.map((p) => ({ type: "Product" as const, id: p.id })),
+              ...result.items.map((p) => ({
+                type: "Product" as const,
+                id: p.id,
+              })),
               { type: "Products", id: "LIST" },
             ]
           : [{ type: "Products", id: "LIST" }],
@@ -52,6 +65,17 @@ export const productsApi = baseApi.injectEndpoints({
     deleteProduct: build.mutation<void, string>({
       query: (id) => ({ url: `/products/${id}`, method: "DELETE" }),
       invalidatesTags: [{ type: "Products", id: "LIST" }],
+    }),
+    restoreProduct: build.mutation<Product, string>({
+      query: (id) => ({
+        url: `/products/${id}/restore`,
+        method: "POST",
+      }),
+      invalidatesTags: (_r, _e, id) => [
+        { type: "Product", id },
+        { type: "Products", id: "LIST" },
+        "Dashboard",
+      ],
     }),
 
     publishProduct: build.mutation<PublishResponse, string>({
@@ -256,6 +280,7 @@ export const {
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
+  useRestoreProductMutation,
   usePublishProductMutation,
   useGetProductQrQuery,
   useLazyGetProductQrQuery,

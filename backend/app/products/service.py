@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -16,6 +17,7 @@ from app.products.models import Passport, Product, ProductImage, QrScan
 from app.schemas.products import (
     ProductCoverImage,
     ProductCreate,
+    ProductListResponse,
     ProductResponse,
     ProductUpdate,
 )
@@ -107,18 +109,53 @@ def _enrich_products(db: Session, products: list[Product]) -> list[ProductRespon
     ]
 
 
-def list_products(db: Session, *, skip: int = 0, limit: int = 50) -> list[ProductResponse]:
+def _active_filter():
+    return Product.deleted_at.is_(None)
+
+
+def list_products(
+    db: Session,
+    *,
+    skip: int = 0,
+    limit: int = 50,
+    q: str | None = None,
+    status_filter: ProductStatus | None = None,
+) -> ProductListResponse:
+    stmt = select(Product).where(_active_filter())
+    count_stmt = select(func.count()).select_from(Product).where(_active_filter())
+
+    if status_filter is not None:
+        stmt = stmt.where(Product.status == status_filter)
+        count_stmt = count_stmt.where(Product.status == status_filter)
+
+    if q:
+        term = f"%{q.strip()}%"
+        search = or_(
+            Product.name.ilike(term),
+            Product.sku.ilike(term),
+            Product.serial_number.ilike(term),
+            Product.description.ilike(term),
+        )
+        stmt = stmt.where(search)
+        count_stmt = count_stmt.where(search)
+
+    total = int(db.scalar(count_stmt) or 0)
     products = list(
         db.scalars(
-            select(Product).order_by(Product.created_at.desc()).offset(skip).limit(limit)
+            stmt.order_by(Product.created_at.desc()).offset(skip).limit(limit)
         ).all()
     )
-    return _enrich_products(db, products)
+    return ProductListResponse(
+        items=_enrich_products(db, products),
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 def get_product(db: Session, product_id: UUID) -> Product:
     product = db.get(Product, product_id)
-    if product is None:
+    if product is None or product.deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Product not found",
@@ -174,6 +211,7 @@ def update_product(
             select(Product.id).where(
                 Product.sku == changes["sku"],
                 Product.id != product.id,
+                _active_filter(),
             )
         )
         if exists is not None:
@@ -199,7 +237,44 @@ def update_product(
 
 
 def delete_product(db: Session, product_id: UUID) -> None:
+    """Soft-delete: hide from lists; keep row + passport history."""
     product = get_product(db, product_id)
-    db.delete(product)
+    product.deleted_at = datetime.now(UTC)
     db.commit()
-    logger.info("product deleted id=%s", product_id)
+    logger.info("product soft-deleted id=%s", product_id)
+
+
+def restore_product(db: Session, product_id: UUID) -> ProductResponse:
+    """Clear soft-delete so the product returns to lists."""
+    product = db.get(Product, product_id)
+    if product is None or product.deleted_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Deleted product not found",
+        )
+
+    conflict = db.scalar(
+        select(Product.id).where(
+            Product.sku == product.sku,
+            Product.id != product.id,
+            _active_filter(),
+        )
+    )
+    if conflict is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="SKU already exists on another product; change that SKU first",
+        )
+
+    product.deleted_at = None
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="SKU already exists on another product; change that SKU first",
+        ) from None
+    db.refresh(product)
+    logger.info("product restored id=%s", product_id)
+    return get_product_response(db, product.id)

@@ -10,8 +10,19 @@ from app.schemas.dashboard import DashboardResponse
 
 
 def get_dashboard(db: Session) -> DashboardResponse:
-    total_products = db.scalar(select(func.count()).select_from(Product)) or 0
-    published_passports = db.scalar(select(func.count()).select_from(Passport)) or 0
+    active = Product.deleted_at.is_(None)
+    total_products = (
+        db.scalar(select(func.count()).select_from(Product).where(active)) or 0
+    )
+    published_passports = (
+        db.scalar(
+            select(func.count())
+            .select_from(Passport)
+            .join(Product, Product.id == Passport.product_id)
+            .where(active)
+        )
+        or 0
+    )
     # One QR file is created per passport.
     generated_qr_codes = published_passports
     # Passport views = recorded QR opens (GET /passport/{uuid}?src=qr).

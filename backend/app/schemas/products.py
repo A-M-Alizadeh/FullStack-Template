@@ -92,3 +92,12 @@ class ProductResponse(BaseModel):
     cover_image: ProductCoverImage | None = None
     public_uuid: UUID | None = None
     scan_count: int = 0
+
+
+class ProductListResponse(BaseModel):
+    """Paginated product list."""
+
+    items: list[ProductResponse]
+    total: int
+    skip: int
+    limit: int

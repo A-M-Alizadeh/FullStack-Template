@@ -164,7 +164,10 @@ def _load_passport(db: Session, public_uuid: UUID) -> Passport:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Passport not found",
         )
-    if passport.product.status != ProductStatus.PUBLISHED:
+    if (
+        passport.product.status != ProductStatus.PUBLISHED
+        or passport.product.deleted_at is not None
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Passport not found",
