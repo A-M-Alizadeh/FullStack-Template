@@ -20,10 +20,20 @@ from sqlalchemy.orm import Session, sessionmaker
 # Must be set before app settings / engine are loaded.
 os.environ["APP_ENV"] = "local"
 os.environ["POSTGRES_DB"] = "dpp_test"
+# TestClient is HTTP; Secure cookies are dropped and break refresh tests.
+os.environ["COOKIE_SECURE"] = "false"
+os.environ["COOKIE_SAMESITE"] = "lax"
+# Avoid accidental Redis/MinIO coupling in unit/integration tests.
+os.environ["REDIS_URL"] = ""
+os.environ["STORAGE_BACKEND"] = "local"
 
+from app.core.cache import reset_cache_for_tests  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
+from app.core.storage import reset_storage_for_tests  # noqa: E402
 
 get_settings.cache_clear()
+reset_cache_for_tests()
+reset_storage_for_tests()
 settings = get_settings()
 
 
@@ -59,6 +69,8 @@ from app.products.models import CertificationType, IssuingAuthority  # noqa: E40
 from app.users.models import User  # noqa: E402
 
 TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+# Recreate schema each session so model changes (e.g. new columns) apply to dpp_test.
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 

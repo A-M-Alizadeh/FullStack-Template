@@ -23,15 +23,17 @@ import { useListProductsQuery } from "@/store/api/productsApi";
 
 export function PassportsList() {
   const t = useT();
-  const { data, isLoading, isError, error, refetch } = useListProductsQuery();
+  const { data, isLoading, isError, error, refetch } = useListProductsQuery({
+    skip: 0,
+    limit: 100,
+    status: "published",
+  });
   const [qrTarget, setQrTarget] = useState<{
     id: string;
     name: string;
   } | null>(null);
 
-  const published = (data ?? []).filter(
-    (p) => p.status === "published" && p.public_uuid,
-  );
+  const published = (data?.items ?? []).filter((p) => p.public_uuid);
 
   if (isLoading) {
     return <Skeleton variant="rounded" height={200} />;

@@ -24,7 +24,9 @@ def test_product_crud(client: TestClient, admin_headers: dict[str, str]):
 
     listed = client.get("/api/v1/products", headers=admin_headers)
     assert listed.status_code == 200
-    assert any(p["id"] == product_id for p in listed.json())
+    body = listed.json()
+    assert "items" in body and "total" in body
+    assert any(p["id"] == product_id for p in body["items"])
 
     got = client.get(f"/api/v1/products/{product_id}", headers=admin_headers)
     assert got.status_code == 200
@@ -40,6 +42,47 @@ def test_product_crud(client: TestClient, admin_headers: dict[str, str]):
 
     deleted = client.delete(f"/api/v1/products/{product_id}", headers=admin_headers)
     assert deleted.status_code == 204
+
+    # Soft-delete: hidden from get/list; SKU can be reused.
+    assert (
+        client.get(f"/api/v1/products/{product_id}", headers=admin_headers).status_code
+        == 404
+    )
+    listed_after = client.get("/api/v1/products", headers=admin_headers).json()
+    assert all(p["id"] != product_id for p in listed_after["items"])
+    # Restore brings it back (before SKU reuse).
+    # Soft-deleted SKU is free — create a sibling then restore original would 409;
+    # restore first while SKU is free:
+    restored = client.post(
+        f"/api/v1/products/{product_id}/restore",
+        headers=admin_headers,
+    )
+    assert restored.status_code == 200
+    assert (
+        client.get(f"/api/v1/products/{product_id}", headers=admin_headers).status_code
+        == 200
+    )
+
+    # Soft-delete again; SKU can be reused on a new product.
+    assert (
+        client.delete(
+            f"/api/v1/products/{product_id}", headers=admin_headers
+        ).status_code
+        == 204
+    )
+    recreate = client.post(
+        "/api/v1/products",
+        headers=admin_headers,
+        json=product_body(name="Widget again", sku=created.json()["sku"]),
+    )
+    assert recreate.status_code == 201
+
+    # Restore fails when SKU is taken by the new product.
+    conflict = client.post(
+        f"/api/v1/products/{product_id}/restore",
+        headers=admin_headers,
+    )
+    assert conflict.status_code == 409
 
 
 def test_products_require_auth(client: TestClient):
@@ -225,3 +268,54 @@ def test_editor_can_create_product(
         json=product_body(),
     )
     assert r.status_code == 201
+
+
+def test_product_list_search_and_status(
+    client: TestClient, admin_headers: dict[str, str]
+):
+    """List supports q search and status filter with pagination meta."""
+    client.post(
+        "/api/v1/products",
+        headers=admin_headers,
+        json=product_body(name="Alpha Searchable", sku="SEARCH-A"),
+    )
+    published = client.post(
+        "/api/v1/products",
+        headers=admin_headers,
+        json=product_body(name="Beta Other", sku="SEARCH-B"),
+    ).json()
+    assert (
+        client.post(
+            f"/api/v1/products/{published['id']}/publish",
+            headers=admin_headers,
+        ).status_code
+        == 200
+    )
+
+    by_q = client.get(
+        "/api/v1/products",
+        headers=admin_headers,
+        params={"q": "Alpha"},
+    )
+    assert by_q.status_code == 200
+    assert by_q.json()["total"] >= 1
+    assert all("Alpha" in p["name"] for p in by_q.json()["items"])
+
+    by_status = client.get(
+        "/api/v1/products",
+        headers=admin_headers,
+        params={"status": "published"},
+    )
+    assert by_status.status_code == 200
+    assert by_status.json()["total"] >= 1
+    assert all(p["status"] == "published" for p in by_status.json()["items"])
+
+    page = client.get(
+        "/api/v1/products",
+        headers=admin_headers,
+        params={"skip": 0, "limit": 1},
+    )
+    assert page.status_code == 200
+    assert len(page.json()["items"]) == 1
+    assert page.json()["limit"] == 1
+    assert page.json()["total"] >= 2

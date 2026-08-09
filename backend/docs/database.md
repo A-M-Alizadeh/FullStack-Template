@@ -175,7 +175,8 @@ erDiagram
 ## Other
 
 - Files: path on disk, not bytes in Postgres.
-- Soft delete / audit log: not in v1.
+- Soft delete: `products.deleted_at` (null = active). Active SKUs unique via partial index.
+- Audit log: not in v1 (bonus next).
 - Dashboard: count products, passports, `qr_scans`.
 - Enums store **text** (`draft`), not numbers (`1`). Easier to read; tiny size difference does not matter here.
 - DB connection settings live in `.env.local` → `app/core/config.py`. No separate db config file.

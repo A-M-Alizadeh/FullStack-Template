@@ -23,11 +23,11 @@ tests/
 
 ## Status
 
-Auth (JWT access + httpOnly refresh cookie), product CRUD + nested resources, publish/QR, public passport + scan tracking, dashboard, analytics, seeds, unit/integration tests.
+Auth (JWT access + httpOnly refresh cookie), product CRUD + nested resources, publish/QR, public passport + scan tracking, dashboard, analytics, **admin-only user CRUD**, seeds, unit/integration tests.
 
-Swagger: `/docs` (tags: `products`, `materials`, `publish`, `passport`, …).
+Swagger: `/docs` (tags include `products`, `users`, `publish`, `passport`, …).
 
-Frontend lives in `../frontend`.
+Architecture overview: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md). Frontend: `../frontend`.
 
 ## Tests
 
@@ -42,22 +42,31 @@ APP_ENV=local uv run pytest
 ## Run
 
 ```bash
-docker compose up db
+docker compose up db redis minio
 cd backend
 APP_ENV=local uv run alembic upgrade head
 APP_ENV=local uv run python -m scripts.seed_users
 APP_ENV=local uv run python -m scripts.seed_lookups
 APP_ENV=local uv run python -m scripts.seed_products
 APP_ENV=local uv run python -m scripts.seed_scans
+APP_ENV=local uv run python -m scripts.seed_audit
 APP_ENV=local uv run uvicorn app.main:app --reload
 ```
+
+Optional infra (see `.env.local.example`):
+
+- `REDIS_URL` — dashboard/analytics cache (empty = disabled)
+- `STORAGE_BACKEND=minio` — object storage instead of local `UPLOAD_DIR`
 
 Seed users (dev only):
 
 - `admin@example.com` / `admin1234`
 - `editor@example.com` / `editor1234`
 
-Demo product SKU: `DEMO-001`. `seed_scans` publishes it (if needed) and adds sample QR scans for dashboard/analytics.
+Demo product SKU: `DEMO-001`.
+
+- `seed_scans` — publish + one republish (version history), cache PDF, sample QR scans
+- `seed_audit` — sample `/audit` rows when the table is empty
 
 Auth:
 
@@ -74,13 +83,15 @@ Products (admin or editor):
 - `GET/PATCH/DELETE /api/v1/products/{id}`
 - Materials / sustainability / certifications / documents / images under `/api/v1/products/{id}/...`
 - Lookups: `GET /api/v1/products/certification-types`, `GET /api/v1/products/issuing-authorities`
-- `POST /api/v1/products/{id}/publish`
+- `POST /api/v1/products/{id}/publish` — first publish or new version (same public UUID)
+- `GET /api/v1/products/{id}/passport/versions`
 - `GET /api/v1/products/{id}/passport/qr`
 
 Public:
 
-- `GET /api/v1/passport/{uuid}` (no auth)
+- `GET /api/v1/passport/{uuid}` (no auth; optional `?version=`)
 - `GET /api/v1/passport/{uuid}?src=qr` — same data; also records a QR scan
+- `GET /api/v1/passport/{uuid}/pdf` — PDF export (cached via BackgroundTasks after publish)
 - File downloads under `/api/v1/passport/{uuid}/.../file`
 
 QR codes encode `{FRONTEND_URL}/passport/{uuid}?src=qr`. The frontend should forward `src` to the API when loading the page.
@@ -89,5 +100,10 @@ Dashboard / analytics (admin or editor):
 
 - `GET /api/v1/dashboard`
 - `GET /api/v1/analytics`
+
+Users (admin only):
+
+- `GET/POST /api/v1/users`
+- `PATCH/DELETE /api/v1/users/{id}`
 
 Docs: http://localhost:8000/docs

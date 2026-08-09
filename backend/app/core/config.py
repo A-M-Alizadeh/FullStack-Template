@@ -42,6 +42,15 @@ class Settings(BaseSettings):
     frontend_url: str
     upload_dir: str = "uploads"
 
+    # Cache / object storage (optional bonuses; empty = disabled / local disk).
+    redis_url: str = ""
+    storage_backend: str = "local"  # local | minio
+    minio_endpoint: str = "localhost:9000"
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+    minio_bucket: str = "dpp"
+    minio_secure: bool = False
+
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = Field(default=60, ge=1)

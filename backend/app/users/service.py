@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.audit import service as audit_service
 from app.auth.security import hash_password
 from app.core.enums import UserRole
 from app.products.models import Product
@@ -48,13 +49,31 @@ def _ensure_not_last_admin(db: Session, user: User) -> None:
         )
 
 
-def create_user(db: Session, body: UserCreate) -> UserResponse:
+def create_user(
+    db: Session, body: UserCreate, *, actor_id: UUID
+) -> UserResponse:
     user = User(
         email=str(body.email).lower(),
         password_hash=hash_password(body.password),
         role=body.role,
     )
     db.add(user)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        ) from None
+    audit_service.record(
+        db,
+        actor_user_id=actor_id,
+        action="user.create",
+        entity_type="user",
+        entity_id=user.id,
+        details={"email": user.email, "role": user.role.value},
+    )
     try:
         db.commit()
     except IntegrityError:
@@ -67,20 +86,36 @@ def create_user(db: Session, body: UserCreate) -> UserResponse:
     return UserResponse.model_validate(user)
 
 
-def update_user(db: Session, user_id: UUID, body: UserUpdate) -> UserResponse:
+def update_user(
+    db: Session, user_id: UUID, body: UserUpdate, *, actor_id: UUID
+) -> UserResponse:
     user = get_user(db, user_id)
     data = body.model_dump(exclude_unset=True)
+    changes: dict = {}
 
     if "role" in data and data["role"] != user.role:
         if user.role == UserRole.ADMIN and data["role"] != UserRole.ADMIN:
             _ensure_not_last_admin(db, user)
         user.role = data["role"]
+        changes["role"] = data["role"].value if hasattr(data["role"], "value") else data["role"]
 
     if "email" in data and data["email"] is not None:
         user.email = str(data["email"]).lower()
+        changes["email"] = user.email
 
     if "password" in data and data["password"]:
         user.password_hash = hash_password(data["password"])
+        changes["password"] = "updated"
+
+    if changes:
+        audit_service.record(
+            db,
+            actor_user_id=actor_id,
+            action="user.update",
+            entity_type="user",
+            entity_id=user.id,
+            details=changes,
+        )
 
     try:
         db.commit()
@@ -113,5 +148,14 @@ def delete_user(db: Session, user_id: UUID, *, actor_id: UUID) -> None:
             detail="User owns products; reassign or delete them first",
         )
 
+    email = user.email
+    audit_service.record(
+        db,
+        actor_user_id=actor_id,
+        action="user.delete",
+        entity_type="user",
+        entity_id=user.id,
+        details={"email": email},
+    )
     db.delete(user)
     db.commit()

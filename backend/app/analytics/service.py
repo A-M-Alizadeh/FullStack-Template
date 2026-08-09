@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.cache import ANALYTICS_KEY, DEFAULT_TTL, get_cache
 from app.products.models import Passport, Product, QrScan
 from app.schemas.analytics import AnalyticsResponse, LatestScan, ProductScanStat
 
@@ -20,6 +21,11 @@ def _start_of_today_utc() -> datetime:
 
 
 def get_analytics(db: Session) -> AnalyticsResponse:
+    cache = get_cache()
+    cached = cache.get_json(ANALYTICS_KEY)
+    if cached is not None:
+        return AnalyticsResponse.model_validate(cached)
+
     today_start = _start_of_today_utc()
     week_start = today_start - timedelta(days=6)
 
@@ -49,6 +55,7 @@ def get_analytics(db: Session) -> AnalyticsResponse:
         )
         .join(Passport, Passport.product_id == Product.id)
         .join(QrScan, QrScan.passport_id == Passport.id)
+        .where(Product.deleted_at.is_(None))
         .group_by(Product.id, Product.name, Product.sku)
         .order_by(func.count(QrScan.id).desc(), Product.name)
         .limit(TOP_PRODUCTS)
@@ -76,6 +83,7 @@ def get_analytics(db: Session) -> AnalyticsResponse:
         )
         .join(Passport, Passport.id == QrScan.passport_id)
         .join(Product, Product.id == Passport.product_id)
+        .where(Product.deleted_at.is_(None))
         .order_by(QrScan.scanned_at.desc())
         .limit(LATEST_SCANS)
     ).all()
@@ -93,9 +101,11 @@ def get_analytics(db: Session) -> AnalyticsResponse:
         for row in latest_rows
     ]
 
-    return AnalyticsResponse(
+    payload = AnalyticsResponse(
         scans_today=scans_today,
         scans_this_week=scans_this_week,
         most_viewed_products=most_viewed,
         latest_scans=latest,
     )
+    cache.set_json(ANALYTICS_KEY, payload.model_dump(mode="json"), ttl_seconds=DEFAULT_TTL)
+    return payload

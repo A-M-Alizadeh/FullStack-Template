@@ -16,6 +16,7 @@ export const BACKOFFICE_NAV: NavItem[] = [
   { labelKey: "nav.passports", href: "/passports" },
   { labelKey: "nav.analytics", href: "/analytics" },
   { labelKey: "nav.users", href: "/users", roles: ["admin"] },
+  { labelKey: "nav.audit", href: "/audit", roles: ["admin"] },
   { labelKey: "nav.settings", href: "/settings" },
 ];
 

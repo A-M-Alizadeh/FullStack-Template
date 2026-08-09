@@ -12,7 +12,8 @@ from app.core.middleware import RequestContextMiddleware
 OPENAPI_TAGS = [
     {"name": "health", "description": "Liveness"},
     {"name": "auth", "description": "Login, refresh, logout"},
-    {"name": "users", "description": "Back-office user list"},
+    {"name": "users", "description": "Back-office user admin"},
+    {"name": "audit", "description": "Admin audit trail"},
     {"name": "products", "description": "Product CRUD"},
     {"name": "materials", "description": "Product materials"},
     {"name": "sustainability", "description": "Product sustainability"},

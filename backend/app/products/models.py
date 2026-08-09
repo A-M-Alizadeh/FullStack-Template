@@ -16,12 +16,14 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -44,6 +46,15 @@ class Product(Base):
     """Main back-office product (draft until published)."""
 
     __tablename__ = "products"
+    __table_args__ = (
+        # Soft-deleted rows keep their SKU; only active rows must be unique.
+        Index(
+            "uq_products_sku_active",
+            "sku",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -52,7 +63,7 @@ class Product(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), index=True
     )
     name: Mapped[str] = mapped_column(String(255))
-    sku: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    sku: Mapped[str] = mapped_column(String(100), index=True)
     serial_number: Mapped[str] = mapped_column(String(100))
     category: Mapped[ProductCategory] = mapped_column(
         Enum(
@@ -71,6 +82,9 @@ class Product(Base):
             values_callable=lambda enum_cls: [item.value for item in enum_cls],
         ),
         default=ProductStatus.DRAFT,
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -97,8 +111,8 @@ class Product(Base):
     images: Mapped[list[ProductImage]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
     )
-    passport: Mapped[Passport | None] = relationship(
-        back_populates="product", cascade="all, delete-orphan", uselist=False
+    passports: Mapped[list[Passport]] = relationship(
+        back_populates="product", cascade="all, delete-orphan"
     )
 
 
@@ -253,10 +267,22 @@ class ProductImage(Base):
 
 
 class Passport(Base):
-    """Public passport: stable UUID for /passport/{uuid} + QR file path."""
+    """Public passport: stable UUID for /passport/{uuid} + version history."""
 
     __tablename__ = "passports"
-    __table_args__ = (UniqueConstraint("product_id"),)
+    __table_args__ = (
+        UniqueConstraint("product_id", "version", name="uq_passports_product_version"),
+        UniqueConstraint(
+            "public_uuid", "version", name="uq_passports_public_uuid_version"
+        ),
+        # One live passport per product; older versions stay as revoked history.
+        Index(
+            "uq_passports_product_active",
+            "product_id",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -265,9 +291,10 @@ class Passport(Base):
         UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), index=True
     )
     public_uuid: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), unique=True, default=uuid.uuid4, index=True
+        UUID(as_uuid=True), default=uuid.uuid4, index=True
     )
     qr_code_path: Mapped[str] = mapped_column(String(500))
+    pdf_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[PassportStatus] = mapped_column(
         Enum(
@@ -289,7 +316,7 @@ class Passport(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    product: Mapped[Product] = relationship(back_populates="passport")
+    product: Mapped[Product] = relationship(back_populates="passports")
     scans: Mapped[list[QrScan]] = relationship(
         back_populates="passport", cascade="all, delete-orphan"
     )

@@ -35,6 +35,17 @@ class PublishResponse(BaseModel):
     passport: PassportSummary
 
 
+class PassportVersionItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    public_uuid: UUID
+    version: int
+    status: PassportStatus
+    verification_status: VerificationStatus
+    created_at: datetime
+
+
 class PublicMaterial(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

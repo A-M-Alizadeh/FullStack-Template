@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
+import { FileDropZone } from "@/components/feedback/FileDropZone";
 import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
 import {
@@ -171,15 +172,15 @@ export function ImagesSection({ productId }: Props) {
           onChange={(e) => setSortOrder(e.target.value)}
           sx={{ width: 96 }}
         />
-        <Button variant="outlined" component="label" size="small">
-          {file ? file.name : t("images.choose")}
-          <input
-            type="file"
+        <Box sx={{ width: "100%", maxWidth: 480 }}>
+          <FileDropZone
             accept="image/*"
-            hidden
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            label={t("images.choose")}
+            fileName={file?.name}
+            onFile={setFile}
+            disabled={creating}
           />
-        </Button>
+        </Box>
         <Button type="submit" variant="contained" disabled={creating}>
           {t("common.upload")}
         </Button>

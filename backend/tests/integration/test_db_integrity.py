@@ -96,11 +96,14 @@ def test_delete_product_cascades_nested(
     assert client.delete(f"/api/v1/products/{pid}", headers=admin_headers).status_code == 204
 
     db.expire_all()
-    assert db.get(Product, pid) is None
-    assert db.scalar(select(func.count()).select_from(Material)) == 0
-    assert db.scalar(select(func.count()).select_from(Sustainability)) == 0
-    assert db.scalar(select(func.count()).select_from(Passport)) == 0
-    assert db.scalar(select(func.count()).select_from(QrScan)) == 0
+    # Soft delete keeps rows for history; public passport becomes unavailable.
+    product = db.get(Product, pid)
+    assert product is not None
+    assert product.deleted_at is not None
+    assert db.scalar(select(func.count()).select_from(Material)) == 1
+    assert db.scalar(select(func.count()).select_from(Passport)) == 1
+    assert db.scalar(select(func.count()).select_from(QrScan)) == 1
+    assert client.get(f"/api/v1/passport/{public_uuid}").status_code == 404
 
 
 def test_duplicate_sku_rolls_back_cleanly(

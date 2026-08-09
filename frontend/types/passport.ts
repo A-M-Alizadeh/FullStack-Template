@@ -25,6 +25,15 @@ export interface PublishResponse {
   passport: PassportSummary;
 }
 
+export interface PassportVersionItem {
+  id: string;
+  public_uuid: string;
+  version: number;
+  status: PassportStatus;
+  verification_status: VerificationStatus;
+  created_at: string;
+}
+
 /** Auth-gated QR PNG plus uuid parsed from Content-Disposition. */
 export interface ProductQrPayload {
   blob: Blob;

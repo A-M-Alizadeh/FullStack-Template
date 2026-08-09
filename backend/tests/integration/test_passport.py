@@ -35,13 +35,37 @@ def test_publish_ok(client: TestClient, admin_headers: dict[str, str]):
     assert public_uuid
 
 
-def test_publish_twice_conflict(client: TestClient, admin_headers: dict[str, str]):
-    """Publishing an already published product returns 409."""
-    product_id, _ = _create_and_publish(client, admin_headers)
+def test_republish_increments_version(
+    client: TestClient, admin_headers: dict[str, str]
+):
+    """Republish keeps public_uuid and bumps version; previous version is revoked."""
+    product_id, public_uuid = _create_and_publish(client, admin_headers)
     r = client.post(
         f"/api/v1/products/{product_id}/publish", headers=admin_headers
     )
-    assert r.status_code == 409
+    assert r.status_code == 200
+    body = r.json()
+    assert body["passport"]["public_uuid"] == public_uuid
+    assert body["passport"]["version"] == 2
+
+    versions = client.get(
+        f"/api/v1/products/{product_id}/passport/versions",
+        headers=admin_headers,
+    )
+    assert versions.status_code == 200
+    rows = versions.json()
+    assert len(rows) == 2
+    assert rows[0]["version"] == 2 and rows[0]["status"] == "active"
+    assert rows[1]["version"] == 1 and rows[1]["status"] == "revoked"
+
+
+def test_passport_pdf_download(client: TestClient, admin_headers: dict[str, str]):
+    """Public PDF endpoint returns a PDF after publish."""
+    _, public_uuid = _create_and_publish(client, admin_headers)
+    r = client.get(f"/api/v1/passport/{public_uuid}/pdf")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/pdf")
+    assert r.content.startswith(b"%PDF")
 
 
 def test_qr_before_publish(client: TestClient, admin_headers: dict[str, str]):

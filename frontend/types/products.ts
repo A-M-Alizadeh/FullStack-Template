@@ -42,6 +42,20 @@ export interface Product {
   scan_count: number;
 }
 
+export type ProductListParams = {
+  skip?: number;
+  limit?: number;
+  q?: string;
+  status?: ProductStatus | "";
+};
+
+export interface ProductListResponse {
+  items: Product[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
 export interface ProductWrite {
   name: string;
   sku: string;
