@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Alert,
   Box,
   Chip,
   Container,
@@ -17,7 +16,8 @@ import {
 import { useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { getErrorMessage } from "@/lib/apiError";
+import { QueryError } from "@/components/feedback/QueryError";
+import { useT } from "@/hooks/useT";
 import { resolveApiAssetUrl } from "@/lib/apiUrl";
 import { getAppName } from "@/lib/env";
 import { formatDateTime } from "@/lib/formatDate";
@@ -27,6 +27,7 @@ import type { PublicPassport } from "@/types/passport";
 type Props = { uuid: string };
 
 export function PublicPassportView({ uuid }: Props) {
+  const t = useT();
   const searchParams = useSearchParams();
   const src = searchParams.get("src") === "qr" ? ("qr" as const) : undefined;
 
@@ -53,12 +54,7 @@ export function PublicPassportView({ uuid }: Props) {
         {isLoading ? <PassportSkeleton /> : null}
 
         {isError || (!isLoading && !data) ? (
-          <Alert severity="error">
-            {getErrorMessage(
-              error,
-              "Passport not found or no longer available",
-            )}
-          </Alert>
+          <QueryError error={error} fallbackKey="passport.loadError" />
         ) : null}
 
         {data ? <PassportContent data={data} /> : null}

@@ -2,9 +2,7 @@
 
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import {
-  Alert,
   Box,
-  Button,
   Chip,
   CircularProgress,
   IconButton,
@@ -14,11 +12,12 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  Typography,
 } from "@mui/material";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { EmptyState } from "@/components/feedback/EmptyState";
+import { QueryError } from "@/components/feedback/QueryError";
+import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
 import {
   useDeleteProductMutation,
@@ -30,6 +29,7 @@ function statusColor(status: string): "default" | "success" {
 }
 
 export function ProductsList() {
+  const t = useT();
   const router = useRouter();
   const { data, isLoading, isError, error, refetch } = useListProductsQuery();
   const [deleteProduct, { isLoading: deleting }] = useDeleteProductMutation();
@@ -57,29 +57,21 @@ export function ProductsList() {
 
   if (isError) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => refetch()}>
-            Retry
-          </Button>
-        }
-      >
-        {getErrorMessage(error, "Could not load products")}
-      </Alert>
+      <QueryError
+        error={error}
+        fallbackKey="products.loadError"
+        onRetry={() => refetch()}
+      />
     );
   }
 
   if (!data?.length) {
     return (
-      <Box sx={{ py: 4 }}>
-        <Typography color="text.secondary" gutterBottom>
-          No products yet.
-        </Typography>
-        <Button component={Link} href="/products/new" variant="contained">
-          Create product
-        </Button>
-      </Box>
+      <EmptyState
+        message={t("products.empty")}
+        actionHref="/products/new"
+        actionLabel={t("products.create")}
+      />
     );
   }
 

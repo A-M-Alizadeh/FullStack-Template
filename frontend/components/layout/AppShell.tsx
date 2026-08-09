@@ -17,6 +17,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
+import { useT } from "@/hooks/useT";
 import { getAppName } from "@/lib/env";
 import { BACKOFFICE_NAV, LOGIN_PATH } from "@/lib/navigation";
 import { useLogoutMutation } from "@/store/api/authApi";
@@ -30,6 +31,7 @@ type AppShellProps = {
 };
 
 export function AppShell({ children }: AppShellProps) {
+  const t = useT();
   const pathname = usePathname();
   const router = useRouter();
   const user = useAppSelector(selectUser);
@@ -52,10 +54,12 @@ export function AppShell({ children }: AppShellProps) {
             key={item.href}
             component={Link}
             href={item.href}
-            selected={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+            selected={
+              pathname === item.href || pathname.startsWith(`${item.href}/`)
+            }
             onClick={() => setMobileOpen(false)}
           >
-            <ListItemText primary={item.label} />
+            <ListItemText primary={t(item.labelKey)} />
           </ListItemButton>
         ))}
       </List>
@@ -82,17 +86,23 @@ export function AppShell({ children }: AppShellProps) {
             {getAppName()}
           </Typography>
           {user ? (
-            <Typography variant="body2" sx={{ mr: 2, display: { xs: "none", sm: "block" } }}>
+            <Typography
+              variant="body2"
+              sx={{ mr: 2, display: { xs: "none", sm: "block" } }}
+            >
               {user.email}
             </Typography>
           ) : null}
           <Button color="inherit" onClick={handleLogout} disabled={loggingOut}>
-            Log out
+            {t("common.logout")}
           </Button>
         </Toolbar>
       </AppBar>
 
-      <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
+      <Box
+        component="nav"
+        sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}
+      >
         <Drawer
           variant="temporary"
           open={mobileOpen}
@@ -111,7 +121,10 @@ export function AppShell({ children }: AppShellProps) {
           open
           sx={{
             display: { xs: "none", md: "block" },
-            "& .MuiDrawer-paper": { width: DRAWER_WIDTH, boxSizing: "border-box" },
+            "& .MuiDrawer-paper": {
+              width: DRAWER_WIDTH,
+              boxSizing: "border-box",
+            },
           }}
         >
           <Toolbar />

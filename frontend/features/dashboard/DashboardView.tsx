@@ -1,26 +1,23 @@
 "use client";
 
-import {
-  Alert,
-  Box,
-  Button,
-  Skeleton,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Skeleton, Typography } from "@mui/material";
 import Link from "next/link";
 
-import { getErrorMessage } from "@/lib/apiError";
+import { QueryError } from "@/components/feedback/QueryError";
+import { useT } from "@/hooks/useT";
+import type { MessageKey } from "@/lib/i18n";
 import { useGetDashboardQuery } from "@/store/api/dashboardApi";
 import type { DashboardSummary } from "@/types/dashboard";
 
-const METRICS: { key: keyof DashboardSummary; label: string }[] = [
-  { key: "total_products", label: "Total products" },
-  { key: "published_passports", label: "Published passports" },
-  { key: "generated_qr_codes", label: "Generated QR codes" },
-  { key: "total_passport_views", label: "Passport views (QR scans)" },
+const METRICS: { key: keyof DashboardSummary; labelKey: MessageKey }[] = [
+  { key: "total_products", labelKey: "dashboard.totalProducts" },
+  { key: "published_passports", labelKey: "dashboard.publishedPassports" },
+  { key: "generated_qr_codes", labelKey: "dashboard.generatedQr" },
+  { key: "total_passport_views", labelKey: "dashboard.passportViews" },
 ];
 
 export function DashboardView() {
+  const t = useT();
   const { data, isLoading, isError, error, refetch } = useGetDashboardQuery();
 
   if (isLoading) {
@@ -41,16 +38,11 @@ export function DashboardView() {
 
   if (isError || !data) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => refetch()}>
-            Retry
-          </Button>
-        }
-      >
-        {getErrorMessage(error, "Could not load dashboard")}
-      </Alert>
+      <QueryError
+        error={error}
+        fallbackKey="dashboard.loadError"
+        onRetry={() => refetch()}
+      />
     );
   }
 
@@ -63,7 +55,7 @@ export function DashboardView() {
           gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
         }}
       >
-        {METRICS.map(({ key, label }) => (
+        {METRICS.map(({ key, labelKey }) => (
           <Box
             key={key}
             sx={{
@@ -75,7 +67,7 @@ export function DashboardView() {
             }}
           >
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              {label}
+              {t(labelKey)}
             </Typography>
             <Typography variant="h4" component="p">
               {data[key]}
@@ -86,10 +78,10 @@ export function DashboardView() {
 
       <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
         <Button component={Link} href="/products" variant="contained">
-          Manage products
+          {t("dashboard.manageProducts")}
         </Button>
         <Button component={Link} href="/analytics" variant="outlined">
-          View analytics
+          {t("dashboard.viewAnalytics")}
         </Button>
       </Box>
     </Box>

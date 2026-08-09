@@ -37,6 +37,9 @@ cd frontend && npm i && npm run dev
 
 `backend/.env.local` already uses `POSTGRES_HOST=localhost`.
 
-## Next
+## What’s in place
 
-See [backend/README.md](backend/README.md) — DB/models first, then auth, then products / passport, then UI.
+- Backend: auth (cookie refresh), products + nested resources, publish/QR, public passport, dashboard, analytics, seeds, tests
+- Frontend: login, back-office (dashboard / products / analytics), public passport page
+
+See `backend/README.md` and `frontend/README.md` for details.

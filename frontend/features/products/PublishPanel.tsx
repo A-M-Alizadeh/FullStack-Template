@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { QueryError } from "@/components/feedback/QueryError";
 import { getErrorMessage } from "@/lib/apiError";
 import { triggerBlobDownload } from "@/lib/downloadBlob";
 import {
@@ -76,11 +77,14 @@ export function PublishPanel({ productId, status }: Props) {
   }
 
   const passportPath = qr?.publicUuid ? `/passport/${qr.publicUuid}` : null;
+  // Prefer API public_url after publish; otherwise path (absolute origin is optional display).
+  const [origin, setOrigin] = useState("");
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
   const publicUrl =
     publicUrlFromPublish ??
-    (typeof window !== "undefined" && qr?.publicUuid
-      ? `${window.location.origin}/passport/${qr.publicUuid}`
-      : passportPath);
+    (passportPath && origin ? `${origin}${passportPath}` : passportPath);
 
   return (
     <Box
@@ -142,16 +146,11 @@ export function PublishPanel({ productId, status }: Props) {
           {qrLoading ? <Skeleton variant="rounded" width={180} height={180} /> : null}
 
           {qrError ? (
-            <Alert
-              severity="error"
-              action={
-                <Button color="inherit" size="small" onClick={() => refetchQr()}>
-                  Retry
-                </Button>
-              }
-            >
-              {getErrorMessage(qrErr, "Could not load QR code")}
-            </Alert>
+            <QueryError
+              error={qrErr}
+              fallbackKey="publish.qrLoadError"
+              onRetry={() => refetchQr()}
+            />
           ) : null}
 
           {previewUrl ? (

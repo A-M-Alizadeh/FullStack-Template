@@ -21,22 +21,13 @@ scripts/       seed helpers
 tests/
 ```
 
-## Done so far
+## Status
 
-1. Project split, env config, FastAPI core, health.
-2. DB design, models, Alembic, tables in Postgres.
-3. Auth: login / refresh / logout / me, bcrypt, JWT access + hashed refresh tokens, role deps.
-4. Product CRUD (draft create; publish comes later).
-5. Nested product data: materials, sustainability, certifications, documents, images.
-6. Publish + QR + public passport + scan tracking.
-7. Dashboard + analytics.
-8. Unit + integration tests (including cascade / rollback / concurrency).
+Auth (JWT access + httpOnly refresh cookie), product CRUD + nested resources, publish/QR, public passport + scan tracking, dashboard, analytics, seeds, unit/integration tests.
 
-## Next
+Swagger: `/docs` (tags: `products`, `materials`, `publish`, `passport`, …).
 
-1. Frontend
-
-Swagger groups endpoints by tag (`products`, `materials`, `publish`, `passport`, …) — see `/docs`.
+Frontend lives in `../frontend`.
 
 ## Tests
 

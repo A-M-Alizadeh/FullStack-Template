@@ -1,14 +1,17 @@
 /** Back-office nav — single source for shell + tests. */
 
+import type { MessageKey } from "@/lib/i18n";
+
 export type NavItem = {
-  label: string;
+  labelKey: MessageKey;
   href: string;
 };
 
 export const BACKOFFICE_NAV: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Products", href: "/products" },
-  { label: "Analytics", href: "/analytics" },
+  { labelKey: "nav.dashboard", href: "/dashboard" },
+  { labelKey: "nav.products", href: "/products" },
+  { labelKey: "nav.analytics", href: "/analytics" },
+  { labelKey: "nav.settings", href: "/settings" },
 ];
 
 export const LOGIN_PATH = "/login";

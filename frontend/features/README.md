@@ -1,5 +1,3 @@
 # Features
 
-Optional domain folders when a page grows (e.g. `features/products/`).
-
-Keep routes thin in `app/`; put heavier UI here.
+Domain UI (`auth`, `products`, `dashboard`, `analytics`, `passport`). Keep `app/` routes thin.

@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  Alert,
   Box,
-  Button,
   Skeleton,
   Table,
   TableBody,
@@ -14,11 +12,13 @@ import {
 } from "@mui/material";
 import Link from "next/link";
 
-import { getErrorMessage } from "@/lib/apiError";
+import { QueryError } from "@/components/feedback/QueryError";
+import { useT } from "@/hooks/useT";
 import { formatDateTime } from "@/lib/formatDate";
 import { useGetAnalyticsQuery } from "@/store/api/analyticsApi";
 
 export function AnalyticsView() {
+  const t = useT();
   const { data, isLoading, isError, error, refetch } = useGetAnalyticsQuery();
 
   if (isLoading) {
@@ -33,16 +33,11 @@ export function AnalyticsView() {
 
   if (isError || !data) {
     return (
-      <Alert
-        severity="error"
-        action={
-          <Button color="inherit" size="small" onClick={() => refetch()}>
-            Retry
-          </Button>
-        }
-      >
-        {getErrorMessage(error, "Could not load analytics")}
-      </Alert>
+      <QueryError
+        error={error}
+        fallbackKey="analytics.loadError"
+        onRetry={() => refetch()}
+      />
     );
   }
 
@@ -55,16 +50,18 @@ export function AnalyticsView() {
           gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
         }}
       >
-        <StatTile label="Scans today" value={data.scans_today} />
-        <StatTile label="Scans this week" value={data.scans_this_week} />
+        <StatTile label={t("analytics.scansToday")} value={data.scans_today} />
+        <StatTile label={t("analytics.scansWeek")} value={data.scans_this_week} />
       </Box>
 
       <Box>
         <Typography variant="h6" component="h2" gutterBottom>
-          Most viewed products
+          {t("analytics.mostViewed")}
         </Typography>
         {!data.most_viewed_products.length ? (
-          <Typography color="text.secondary">No QR scans yet.</Typography>
+          <Typography color="text.secondary">
+            {t("analytics.noScans")}
+          </Typography>
         ) : (
           <Table size="small">
             <TableHead>
@@ -91,10 +88,12 @@ export function AnalyticsView() {
 
       <Box>
         <Typography variant="h6" component="h2" gutterBottom>
-          Latest scans
+          {t("analytics.latestScans")}
         </Typography>
         {!data.latest_scans.length ? (
-          <Typography color="text.secondary">No recent scans.</Typography>
+          <Typography color="text.secondary">
+            {t("analytics.noLatest")}
+          </Typography>
         ) : (
           <Table size="small">
             <TableHead>
