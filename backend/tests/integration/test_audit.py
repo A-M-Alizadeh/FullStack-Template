@@ -41,3 +41,30 @@ def test_audit_records_product_lifecycle(
     assert "product.create" in actions
     assert "product.delete" in actions
     assert "product.restore" in actions
+
+
+def test_audit_records_publish_and_republish(
+    client: TestClient, admin_headers: dict[str, str]
+):
+    product = client.post(
+        "/api/v1/products",
+        headers=admin_headers,
+        json=product_body(name="Publish Audit", sku="AUD-PUB-1"),
+    ).json()
+    assert (
+        client.post(
+            f"/api/v1/products/{product['id']}/publish", headers=admin_headers
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            f"/api/v1/products/{product['id']}/publish", headers=admin_headers
+        ).status_code
+        == 200
+    )
+
+    logs = client.get("/api/v1/audit", headers=admin_headers).json()["items"]
+    actions = {row["action"] for row in logs}
+    assert "product.publish" in actions
+    assert "product.republish" in actions

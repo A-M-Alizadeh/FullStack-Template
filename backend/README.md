@@ -49,6 +49,7 @@ APP_ENV=local uv run python -m scripts.seed_users
 APP_ENV=local uv run python -m scripts.seed_lookups
 APP_ENV=local uv run python -m scripts.seed_products
 APP_ENV=local uv run python -m scripts.seed_scans
+APP_ENV=local uv run python -m scripts.seed_audit
 APP_ENV=local uv run uvicorn app.main:app --reload
 ```
 
@@ -62,7 +63,10 @@ Seed users (dev only):
 - `admin@example.com` / `admin1234`
 - `editor@example.com` / `editor1234`
 
-Demo product SKU: `DEMO-001`. `seed_scans` publishes it (if needed) and adds sample QR scans for dashboard/analytics.
+Demo product SKU: `DEMO-001`.
+
+- `seed_scans` — publish + one republish (version history), cache PDF, sample QR scans
+- `seed_audit` — sample `/audit` rows when the table is empty
 
 Auth:
 
