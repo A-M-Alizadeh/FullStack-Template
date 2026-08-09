@@ -62,5 +62,5 @@ npm run test:watch
 | Layer | What | Status |
 |-------|------|--------|
 | `lib/` + Zod schemas | Unit (Vitest) | Done |
-| Components | RTL | Planned |
+| Components | RTL (Login, Settings) | Done |
 | E2E smoke | Playwright | Planned |

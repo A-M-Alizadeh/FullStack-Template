@@ -25,6 +25,7 @@ export function SettingsForm() {
           value={mode}
           onChange={(e) => setMode(e.target.value as ThemeMode)}
           size="small"
+          aria-label={t("settings.theme")}
         >
           <MenuItem value="light">{t("settings.themeLight")}</MenuItem>
           <MenuItem value="dark">{t("settings.themeDark")}</MenuItem>
@@ -37,6 +38,7 @@ export function SettingsForm() {
           value={locale}
           onChange={(e) => setLocale(e.target.value as Locale)}
           size="small"
+          aria-label={t("settings.language")}
         >
           <MenuItem value="en">{t("settings.languageEn")}</MenuItem>
           <MenuItem value="it">{t("settings.languageIt")}</MenuItem>
