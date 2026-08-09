@@ -7,6 +7,7 @@ import "./api/productsApi";
 import "./api/dashboardApi";
 import "./api/analyticsApi";
 import "./api/passportApi";
+import "./api/auditApi";
 import authReducer from "./auth/authSlice";
 
 export const store = configureStore({

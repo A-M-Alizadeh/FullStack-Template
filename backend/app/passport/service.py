@@ -12,10 +12,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app.core.config import Settings
+from app.audit import service as audit_service
+from app.core.cache import invalidate_stats_cache
+from app.core.config import Settings, get_settings
 from app.core.enums import PassportStatus, ProductStatus, VerificationStatus
 from app.core.qrcode_util import make_qr_png
-from app.core.storage import Storage
+from app.core.storage import Storage, get_storage
+from app.database.session import SessionLocal
+from app.passport.pdf import build_passport_pdf
 from app.products.models import (
     Certification,
     Document,
@@ -80,8 +84,28 @@ def _to_summary(
     )
 
 
-def get_passport_for_product(db: Session, product_id: UUID) -> Passport | None:
-    return db.scalar(select(Passport).where(Passport.product_id == product_id))
+def get_active_passport_for_product(db: Session, product_id: UUID) -> Passport | None:
+    return db.scalar(
+        select(Passport).where(
+            Passport.product_id == product_id,
+            Passport.status == PassportStatus.ACTIVE,
+        )
+    )
+
+
+# Back-compat alias used by seeds / older call sites.
+get_passport_for_product = get_active_passport_for_product
+
+
+def list_passport_versions(db: Session, product_id: UUID) -> list[Passport]:
+    get_product(db, product_id)
+    return list(
+        db.scalars(
+            select(Passport)
+            .where(Passport.product_id == product_id)
+            .order_by(Passport.version.desc())
+        ).all()
+    )
 
 
 def publish_product(
@@ -90,49 +114,68 @@ def publish_product(
     *,
     settings: Settings,
     storage: Storage,
+    actor_id: UUID | None = None,
 ) -> PublishResponse:
     product = get_product(db, product_id)
-    existing = get_passport_for_product(db, product_id)
-    if existing is not None or product.status == ProductStatus.PUBLISHED:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Product already published",
-        )
+    active = get_active_passport_for_product(db, product_id)
 
-    public_uuid = uuid.uuid4()
-    # QR encodes src=qr so scans can be distinguished from direct page opens.
-    qr_target = _frontend_passport_url(settings, public_uuid, from_qr=True)
-    qr_key = storage.save_bytes(
-        product_id=product.id,
-        folder="qr",
-        suffix=".png",
-        data=make_qr_png(qr_target),
-    )
+    if active is None:
+        public_uuid = uuid.uuid4()
+        version = 1
+        qr_target = _frontend_passport_url(settings, public_uuid, from_qr=True)
+        qr_key = storage.save_bytes(
+            product_id=product.id,
+            folder="qr",
+            suffix=".png",
+            data=make_qr_png(qr_target),
+        )
+    else:
+        # Republish: keep public_uuid (QR stays valid) and bump version.
+        public_uuid = active.public_uuid
+        version = active.version + 1
+        qr_key = active.qr_code_path
+        active.status = PassportStatus.REVOKED
 
     passport = Passport(
         product_id=product.id,
         public_uuid=public_uuid,
         qr_code_path=qr_key,
-        version=1,
+        version=version,
         status=PassportStatus.ACTIVE,
         verification_status=VerificationStatus.VERIFIED,
     )
     product.status = ProductStatus.PUBLISHED
     db.add(passport)
+    audit_service.record(
+        db,
+        actor_user_id=actor_id,
+        action="product.publish" if version == 1 else "product.republish",
+        entity_type="product",
+        entity_id=product.id,
+        details={
+            "public_uuid": str(public_uuid),
+            "sku": product.sku,
+            "version": version,
+        },
+    )
     try:
         db.commit()
     except IntegrityError:
-        # Concurrent publish: unique(product_id) on passports wins.
         db.rollback()
-        storage.delete(qr_key)
+        if version == 1:
+            storage.delete(qr_key)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Product already published",
         ) from None
     db.refresh(passport)
+    invalidate_stats_cache()
 
     logger.info(
-        "published product_id=%s public_uuid=%s", product.id, passport.public_uuid
+        "published product_id=%s public_uuid=%s version=%s",
+        product.id,
+        passport.public_uuid,
+        passport.version,
     )
     return PublishResponse(
         product_id=product.id,
@@ -141,25 +184,40 @@ def publish_product(
     )
 
 
-def _load_passport(db: Session, public_uuid: UUID) -> Passport:
-    result = db.execute(
+def _passport_options():
+    return (
+        joinedload(Passport.product).options(
+            selectinload(Product.materials),
+            selectinload(Product.sustainability),
+            selectinload(Product.certifications).options(
+                joinedload(Certification.certification_type),
+                joinedload(Certification.issuing_authority),
+            ),
+            selectinload(Product.documents),
+            selectinload(Product.images),
+        ),
+    )
+
+
+def _load_passport(
+    db: Session,
+    public_uuid: UUID,
+    *,
+    version: int | None = None,
+) -> Passport:
+    stmt = (
         select(Passport)
         .where(Passport.public_uuid == public_uuid)
-        .options(
-            joinedload(Passport.product).options(
-                selectinload(Product.materials),
-                selectinload(Product.sustainability),
-                selectinload(Product.certifications).options(
-                    joinedload(Certification.certification_type),
-                    joinedload(Certification.issuing_authority),
-                ),
-                selectinload(Product.documents),
-                selectinload(Product.images),
-            )
-        )
+        .options(*_passport_options())
     )
+    if version is not None:
+        stmt = stmt.where(Passport.version == version)
+    else:
+        stmt = stmt.where(Passport.status == PassportStatus.ACTIVE)
+
+    result = db.execute(stmt)
     passport = result.unique().scalar_one_or_none()
-    if passport is None or passport.status != PassportStatus.ACTIVE:
+    if passport is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Passport not found",
@@ -252,8 +310,9 @@ def get_public_passport(
     public_uuid: UUID,
     *,
     settings: Settings,
+    version: int | None = None,
 ) -> PublicPassportResponse:
-    passport = _load_passport(db, public_uuid)
+    passport = _load_passport(db, public_uuid, version=version)
     return _to_public_response(passport, settings=settings)
 
 
@@ -290,7 +349,7 @@ def _lang_code(accept_language: str | None) -> str:
         return "en"
     primary = accept_language.split(",")[0].strip()
     primary = primary.split(";")[0].strip()
-    return (primary[:20] or "en")
+    return primary[:20] or "en"
 
 
 def record_scan(db: Session, passport: Passport, request: Request) -> None:
@@ -333,13 +392,15 @@ def get_public_passport_and_track(
     settings: Settings,
     request: Request,
     src: str | None = None,
+    version: int | None = None,
 ) -> PublicPassportResponse:
-    passport = _load_passport(db, public_uuid)
+    passport = _load_passport(db, public_uuid, version=version)
     payload = _to_public_response(passport, settings=settings)
     # Only QR deep links (?src=qr) count as scans; direct opens do not.
-    if src == "qr":
+    if src == "qr" and passport.status == PassportStatus.ACTIVE:
         record_scan(db, passport, request)
         db.commit()
+        invalidate_stats_cache()
     return payload
 
 
@@ -374,3 +435,57 @@ def resolve_public_image(
     if image is None:
         raise HTTPException(status_code=404, detail="Image not found")
     return image
+
+
+def get_or_build_passport_pdf(
+    db: Session,
+    public_uuid: UUID,
+    *,
+    settings: Settings,
+    storage: Storage,
+    version: int | None = None,
+) -> tuple[bytes, str]:
+    """Return PDF bytes and download filename (uses cache when present)."""
+    passport = _load_passport(db, public_uuid, version=version)
+    filename = f"passport-{public_uuid}-v{passport.version}.pdf"
+    if passport.pdf_path and storage.exists(passport.pdf_path):
+        return storage.read_bytes(passport.pdf_path), filename
+
+    payload = _to_public_response(passport, settings=settings)
+    pdf_bytes = build_passport_pdf(payload)
+    key = storage.save_bytes(
+        product_id=passport.product_id,
+        folder="passport-pdf",
+        suffix=".pdf",
+        data=pdf_bytes,
+    )
+    old = passport.pdf_path
+    passport.pdf_path = key
+    db.commit()
+    if old:
+        storage.delete(old)
+    return pdf_bytes, filename
+
+
+def cache_passport_pdf_task(public_uuid: UUID, version: int) -> None:
+    """BackgroundTasks entrypoint: build and store PDF after publish."""
+    db = SessionLocal()
+    try:
+        settings = get_settings()
+        storage = get_storage()
+        get_or_build_passport_pdf(
+            db,
+            public_uuid,
+            settings=settings,
+            storage=storage,
+            version=version,
+        )
+        logger.info("cached passport pdf public_uuid=%s version=%s", public_uuid, version)
+    except Exception:
+        logger.exception(
+            "failed to cache passport pdf public_uuid=%s version=%s",
+            public_uuid,
+            version,
+        )
+    finally:
+        db.close()

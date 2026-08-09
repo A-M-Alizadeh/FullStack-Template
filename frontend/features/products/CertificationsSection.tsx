@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
+import { FileDropZone } from "@/components/feedback/FileDropZone";
 import { usePreferences } from "@/components/preferences/PreferencesProvider";
 import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
@@ -213,15 +214,13 @@ export function CertificationsSection({ productId }: Props) {
             onChange={(e) => setExpirationDate(e.target.value)}
           />
           <Box sx={{ gridColumn: { md: "1 / -1" } }}>
-            <Button variant="outlined" component="label" size="small">
-              {pdf ? pdf.name : t("certs.choosePdf")}
-              <input
-                type="file"
-                accept="application/pdf"
-                hidden
-                onChange={(e) => setPdf(e.target.files?.[0] ?? null)}
-              />
-            </Button>
+            <FileDropZone
+              accept="application/pdf"
+              label={t("certs.choosePdf")}
+              fileName={pdf?.name}
+              onFile={setPdf}
+              disabled={creating}
+            />
           </Box>
           <Box>
             <Button type="submit" variant="contained" disabled={creating}>

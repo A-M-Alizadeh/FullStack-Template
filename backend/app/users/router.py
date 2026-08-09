@@ -23,9 +23,9 @@ def list_users(
 def create_user(
     body: UserCreate,
     db: DbSession,
-    _: RequireAdmin,
+    actor: RequireAdmin,
 ) -> UserResponse:
-    return users_service.create_user(db, body)
+    return users_service.create_user(db, body, actor_id=actor.id)
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
@@ -33,9 +33,9 @@ def update_user(
     user_id: UUID,
     body: UserUpdate,
     db: DbSession,
-    _: RequireAdmin,
+    actor: RequireAdmin,
 ) -> UserResponse:
-    return users_service.update_user(db, user_id, body)
+    return users_service.update_user(db, user_id, body, actor_id=actor.id)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

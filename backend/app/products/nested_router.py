@@ -3,11 +3,11 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, File, Form, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, File, Form, Response, UploadFile, status
 
 from app.auth.deps import DbSession, FileStorage, RequireEditorOrAdmin
 from app.core.enums import DocumentType, ImageType
+from app.core.storage import storage_response
 from app.products import certifications as certs_service
 from app.products import materials as materials_service
 from app.products import media as media_service
@@ -275,10 +275,14 @@ def download_certification_pdf(
     db: DbSession,
     storage: FileStorage,
     _: RequireEditorOrAdmin,
-) -> FileResponse:
+) -> Response:
     row = certs_service.get_certification(db, product_id, certification_id)
-    path = storage.path(row.pdf_path)
-    return FileResponse(path, filename=path.name, media_type="application/pdf")
+    return storage_response(
+        storage,
+        row.pdf_path,
+        filename=f"{certification_id}.pdf",
+        media_type="application/pdf",
+    )
 
 
 # --- documents ---
@@ -343,10 +347,14 @@ def download_document(
     db: DbSession,
     storage: FileStorage,
     _: RequireEditorOrAdmin,
-) -> FileResponse:
+) -> Response:
     row = media_service.get_document(db, product_id, document_id)
-    path = storage.path(row.file_path)
-    return FileResponse(path, filename=row.original_filename, media_type="application/pdf")
+    return storage_response(
+        storage,
+        row.file_path,
+        filename=row.original_filename,
+        media_type="application/pdf",
+    )
 
 
 # --- images ---
@@ -417,7 +425,6 @@ def download_image(
     db: DbSession,
     storage: FileStorage,
     _: RequireEditorOrAdmin,
-) -> FileResponse:
+) -> Response:
     row = media_service.get_image(db, product_id, image_id)
-    path = storage.path(row.file_path)
-    return FileResponse(path, filename=path.name)
+    return storage_response(storage, row.file_path, filename=f"{image_id}")

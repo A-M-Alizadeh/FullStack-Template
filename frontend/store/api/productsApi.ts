@@ -1,5 +1,9 @@
 import { filenameFromContentDisposition } from "@/lib/downloadBlob";
-import type { ProductQrPayload, PublishResponse } from "@/types/passport";
+import type {
+  PassportVersionItem,
+  ProductQrPayload,
+  PublishResponse,
+} from "@/types/passport";
 import type {
   Certification,
   LookupItem,
@@ -87,8 +91,16 @@ export const productsApi = baseApi.injectEndpoints({
         { type: "Product", id },
         { type: "Products", id: "LIST" },
         { type: "ProductQr", id },
+        { type: "PassportVersions", id },
         "Dashboard",
         "Analytics",
+      ],
+    }),
+
+    listPassportVersions: build.query<PassportVersionItem[], string>({
+      query: (productId) => `/products/${productId}/passport/versions`,
+      providesTags: (_r, _e, productId) => [
+        { type: "PassportVersions", id: productId },
       ],
     }),
 
@@ -282,6 +294,7 @@ export const {
   useDeleteProductMutation,
   useRestoreProductMutation,
   usePublishProductMutation,
+  useListPassportVersionsQuery,
   useGetProductQrQuery,
   useLazyGetProductQrQuery,
   useListMaterialsQuery,

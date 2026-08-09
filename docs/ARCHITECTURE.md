@@ -30,7 +30,7 @@ Routes live under `auth`, `users`, `products`, `passport`, `dashboard`, `analyti
 Next.js is the UI shell. Keeps one OpenAPI surface (`/docs`) and avoids duplicating auth/validation in Next API routes.
 
 **Passport is a separate table.**  
-Publishing creates a `passports` row with a stable `public_uuid` and QR asset. Editing the product later does not change the public link. `version` is stored for future history; today publish creates version `1`.
+Publishing creates a `passports` row with a stable `public_uuid` and QR asset. Republish keeps the same UUID/QR, revokes the previous row, and inserts version `N+1`. Public GET serves the active version (optional `?version=` for history).
 
 **Roles are coarse and explicit.**  
 `admin` | `editor`. Editors manage products/passports/analytics. Admins also manage users. Enforcement:
@@ -82,7 +82,7 @@ Current design fits a single-region, moderate-traffic deploy:
 - Append-only scan table scales with writes; analytics queries are aggregate/limit, not full history dumps
 - List endpoints already accept `skip`/`limit` for paging
 
-When traffic grows: move files to object storage (MinIO/S3 — `Storage` protocol is ready), cache dashboard/analytics (Redis), and push heavy work (PDF export, bulk QR) to a queue.
+Optional infra already wired: MinIO via `STORAGE_BACKEND=minio`, Redis via `REDIS_URL`, PDF export via BackgroundTasks after publish.
 
 ## 6. Performance strategies
 
@@ -100,12 +100,13 @@ Aligned with assessment bonuses / production hardening:
 |------|------|
 | Soft delete | **Done** — `products.deleted_at`; lists/get hide deleted rows; `POST …/restore` + UI Undo |
 | Search / filters | **Done** — `q` + `status` on product list; UI pagination |
-| Audit log | Postgres table for publish / user admin actions |
-| Passport versioning | New passport version on re-publish; keep history |
-| Object storage | Swap `LocalStorage` for MinIO/S3 |
-| Export | Passport PDF generation |
-| Jobs | BackgroundTasks / Celery for heavy exports |
-| Cache | Redis for dashboard/analytics |
+| Audit log | **Done** — `audit_logs` table; admin `/audit` UI; create/delete/restore/publish/user mutations |
+| Drag & drop uploads | **Done** — shared `FileDropZone` on certs/docs/images |
+| Passport versioning | **Done** — republish bumps version, keeps `public_uuid`/QR; revoked history + versions API/UI |
+| Object storage | **Done** — `STORAGE_BACKEND=minio` swaps in `MinioStorage` (`Storage` protocol) |
+| Export | **Done** — `GET /passport/{uuid}/pdf` (ReportLab); public download button |
+| Jobs | **Done** — FastAPI `BackgroundTasks` caches PDF after publish |
+| Cache | **Done** — Redis for dashboard/analytics (`REDIS_URL`; NullCache fallback) |
 
 ## 8. Testing
 
@@ -118,4 +119,4 @@ Aligned with assessment bonuses / production hardening:
 
 ---
 
-**Summary:** Modular FastAPI + Next.js SPA, normalized Postgres schema with a dedicated public passport, JWT + httpOnly refresh, role checks at API / nav / page. Structure leaves room for soft delete, search, audit, and object storage without a rewrite.
+**Summary:** Modular FastAPI + Next.js SPA, normalized Postgres schema with a versioned public passport, JWT + httpOnly refresh, role checks at API / nav / page, plus soft delete, audit, Redis cache, MinIO-ready storage, and PDF export.

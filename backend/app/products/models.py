@@ -111,8 +111,8 @@ class Product(Base):
     images: Mapped[list[ProductImage]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
     )
-    passport: Mapped[Passport | None] = relationship(
-        back_populates="product", cascade="all, delete-orphan", uselist=False
+    passports: Mapped[list[Passport]] = relationship(
+        back_populates="product", cascade="all, delete-orphan"
     )
 
 
@@ -267,10 +267,22 @@ class ProductImage(Base):
 
 
 class Passport(Base):
-    """Public passport: stable UUID for /passport/{uuid} + QR file path."""
+    """Public passport: stable UUID for /passport/{uuid} + version history."""
 
     __tablename__ = "passports"
-    __table_args__ = (UniqueConstraint("product_id"),)
+    __table_args__ = (
+        UniqueConstraint("product_id", "version", name="uq_passports_product_version"),
+        UniqueConstraint(
+            "public_uuid", "version", name="uq_passports_public_uuid_version"
+        ),
+        # One live passport per product; older versions stay as revoked history.
+        Index(
+            "uq_passports_product_active",
+            "product_id",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -279,9 +291,10 @@ class Passport(Base):
         UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), index=True
     )
     public_uuid: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), unique=True, default=uuid.uuid4, index=True
+        UUID(as_uuid=True), default=uuid.uuid4, index=True
     )
     qr_code_path: Mapped[str] = mapped_column(String(500))
+    pdf_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[PassportStatus] = mapped_column(
         Enum(
@@ -303,7 +316,7 @@ class Passport(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    product: Mapped[Product] = relationship(back_populates="passport")
+    product: Mapped[Product] = relationship(back_populates="passports")
     scans: Mapped[list[QrScan]] = relationship(
         back_populates="passport", cascade="all, delete-orphan"
     )

@@ -23,7 +23,7 @@ def test_save_file_rejects_bad_suffix(tmp_path):
 
 
 def test_save_bytes_and_path(tmp_path):
-    """Saved bytes can be read back via path()."""
+    """Saved bytes can be read back via path() / read_bytes()."""
     storage = LocalStorage(root=tmp_path)
     key = storage.save_bytes(
         product_id=uuid4(),
@@ -32,3 +32,6 @@ def test_save_bytes_and_path(tmp_path):
         data=b"png-bytes",
     )
     assert storage.path(key).read_bytes() == b"png-bytes"
+    assert storage.read_bytes(key) == b"png-bytes"
+    assert storage.exists(key) is True
+

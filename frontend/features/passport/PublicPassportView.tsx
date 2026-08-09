@@ -2,6 +2,7 @@
 
 import {
   Box,
+  Button,
   Chip,
   Container,
   Link as MuiLink,
@@ -19,7 +20,7 @@ import type { ReactNode } from "react";
 import { QueryError } from "@/components/feedback/QueryError";
 import { useT } from "@/hooks/useT";
 import { resolveApiAssetUrl } from "@/lib/apiUrl";
-import { getAppName } from "@/lib/env";
+import { getApiBaseUrl, getAppName } from "@/lib/env";
 import { formatDateTime } from "@/lib/formatDate";
 import { useGetPublicPassportQuery } from "@/store/api/passportApi";
 import type { PublicPassport } from "@/types/passport";
@@ -118,6 +119,18 @@ function PassportContent({ data }: { data: PublicPassport }) {
         <Typography variant="body2" color="text.secondary">
           {formatDateTime(data.created_at)}
         </Typography>
+        <Box sx={{ mt: 1.5 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            component="a"
+            href={`${getApiBaseUrl()}/passport/${data.public_uuid}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t("passport.downloadPdf")}
+          </Button>
+        </Box>
       </Box>
 
       {cover ? (

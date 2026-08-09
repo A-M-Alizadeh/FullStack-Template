@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
+import { FileDropZone } from "@/components/feedback/FileDropZone";
 import { usePreferences } from "@/components/preferences/PreferencesProvider";
 import { useT } from "@/hooks/useT";
 import { getErrorMessage } from "@/lib/apiError";
@@ -158,15 +159,15 @@ export function DocumentsSection({ productId }: Props) {
             ))}
           </Select>
         </FormControl>
-        <Button variant="outlined" component="label" size="small">
-          {file ? file.name : t("docs.choosePdf")}
-          <input
-            type="file"
+        <Box sx={{ width: "100%", maxWidth: 480 }}>
+          <FileDropZone
             accept="application/pdf"
-            hidden
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            label={t("docs.choosePdf")}
+            fileName={file?.name}
+            onFile={setFile}
+            disabled={creating}
           />
-        </Button>
+        </Box>
         <Button type="submit" variant="contained" disabled={creating}>
           {t("common.upload")}
         </Button>
