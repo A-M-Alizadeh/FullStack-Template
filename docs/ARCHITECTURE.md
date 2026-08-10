@@ -65,13 +65,19 @@ Migrations: Alembic (`alembic upgrade head`). Seeds: users, lookups, demo produc
 | Concern | Approach |
 |---------|----------|
 | Passwords | bcrypt hashes; never returned in API |
-| Access | Short-lived JWT (`Authorization: Bearer`) |
-| Refresh | Opaque token, hashed in DB, **httpOnly** cookie (`credentials: "include"`) |
+| Access | Short-lived JWT (`Authorization: Bearer`); role taken from DB on each request |
+| Refresh | Opaque token, hashed in DB, **httpOnly** cookie; **rotated** on refresh |
+| Refresh theft | Reuse of a rotated refresh token revokes **all** live sessions for that user |
+| Rate limits | IP buckets: auth tight, public passport moderate, API default (`429` + `Retry-After`) |
 | CORS | Configured origins only (frontend URL) |
-| Public vs private files | Public passport media via passport UUID routes; back-office files need Bearer |
-| Input | Pydantic v2 on write paths; Zod on key frontend forms |
-| Authorization | Role dependencies on every protected route |
-| User admin guards | No self-delete; cannot demote/delete last admin; cannot delete user who owns products |
+| Uploads | Suffix allowlist + magic-byte check + `MAX_UPLOAD_BYTES` |
+| Object storage | Keys under `products/{id}/…` only; path traversal rejected; no MinIO listing API |
+| Public vs private files | Public media only via passport UUID routes; back-office files need Bearer |
+| Authorization | Nested resources scoped by `product_id` + row id (no cross-product IDOR) |
+| User admin | Admin only; no self-delete; cannot demote/delete last admin |
+| Input | Pydantic v2 on write paths; ORM bound parameters (no string SQL) |
+
+Back-office products are a **shared editor workspace** (any editor/admin may manage products). Isolation is role-based + object-key scoping, not per-user product tenancy.
 
 Access token stays in memory on the client (not `localStorage`) to reduce XSS persistence of long-lived credentials; refresh cookie handles reload.
 

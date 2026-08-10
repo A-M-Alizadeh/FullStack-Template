@@ -1,6 +1,8 @@
 """File storage backend.
 
 Local disk by default. Set STORAGE_BACKEND=minio for MinIO/S3-compatible storage.
+
+Objects are keyed under products/{product_id}/… — never serve arbitrary paths.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from fastapi import UploadFile
 from fastapi.responses import FileResponse, Response
 
 from app.core.config import BASE_DIR, Settings, get_settings
+from app.core.uploads import assert_storage_key, assert_upload_allowed
 
 logger = logging.getLogger("app.storage")
 
@@ -60,23 +63,40 @@ def storage_response(
     *,
     filename: str,
     media_type: str | None = None,
+    product_id: uuid.UUID | None = None,
 ) -> Response:
-    """Serve a stored object as an HTTP response (local path or streamed bytes)."""
+    """Serve a stored object after validating the key belongs to the product."""
+    safe_key = assert_storage_key(key, product_id=product_id)
     if isinstance(storage, LocalStorage):
-        path = storage.path(key)
+        path = storage.path(safe_key)
         return FileResponse(path, filename=filename, media_type=media_type)
-    data = storage.read_bytes(key)
+    data = storage.read_bytes(safe_key)
     headers = {
         "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
     }
     return Response(content=data, media_type=media_type, headers=headers)
 
 
+def _read_upload_capped(upload: UploadFile, max_bytes: int) -> bytes:
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = upload.file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise ValueError(f"file too large (max {max_bytes} bytes)")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 class LocalStorage:
     """Files under UPLOAD_DIR on disk."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, *, max_upload_bytes: int) -> None:
         self.root = root
+        self.max_upload_bytes = max_upload_bytes
         self.root.mkdir(parents=True, exist_ok=True)
 
     def save_file(
@@ -88,21 +108,17 @@ class LocalStorage:
         allowed_suffixes: set[str],
     ) -> tuple[str, str]:
         original = (upload.filename or "upload").strip() or "upload"
-        suffix = Path(original).suffix.lower()
-        if suffix not in allowed_suffixes:
-            raise ValueError(f"file type not allowed: {suffix or '(none)'}")
-
+        data = _read_upload_capped(upload, self.max_upload_bytes)
+        suffix = assert_upload_allowed(
+            filename=original,
+            data=data,
+            allowed_suffixes=allowed_suffixes,
+            max_bytes=self.max_upload_bytes,
+        )
         key = self._key(product_id, folder, suffix)
-        absolute = self._absolute(key)
+        absolute = self.path(key)
         absolute.parent.mkdir(parents=True, exist_ok=True)
-
-        with absolute.open("wb") as out:
-            while True:
-                chunk = upload.file.read(1024 * 1024)
-                if not chunk:
-                    break
-                out.write(chunk)
-
+        absolute.write_bytes(data)
         return key, original
 
     def save_bytes(
@@ -115,17 +131,22 @@ class LocalStorage:
     ) -> str:
         if not suffix.startswith("."):
             suffix = f".{suffix}"
+        if len(data) > self.max_upload_bytes:
+            raise ValueError(f"file too large (max {self.max_upload_bytes} bytes)")
         key = self._key(product_id, folder, suffix.lower())
-        absolute = self._absolute(key)
+        absolute = self.path(key)
         absolute.parent.mkdir(parents=True, exist_ok=True)
         absolute.write_bytes(data)
         return key
 
     def path(self, key: str) -> Path:
+        safe = assert_storage_key(key)
         root = self.root.resolve()
-        absolute = (root / key).resolve()
-        if not str(absolute).startswith(str(root)):
-            raise ValueError("invalid file path")
+        absolute = (root / safe).resolve()
+        try:
+            absolute.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("invalid file path") from exc
         return absolute
 
     def read_bytes(self, key: str) -> bytes:
@@ -147,16 +168,17 @@ class LocalStorage:
             logger.info("deleted file %s", key)
 
     def _key(self, product_id: uuid.UUID, folder: str, suffix: str) -> str:
+        safe_folder = folder.replace("..", "").strip("/\\") or "files"
         return (
-            Path("products") / str(product_id) / folder / f"{uuid.uuid4().hex}{suffix}"
+            Path("products")
+            / str(product_id)
+            / safe_folder
+            / f"{uuid.uuid4().hex}{suffix}"
         ).as_posix()
-
-    def _absolute(self, key: str) -> Path:
-        return self.root / key
 
 
 class MinioStorage:
-    """S3-compatible object storage (MinIO)."""
+    """S3-compatible object storage (MinIO). App never exposes bucket listing."""
 
     def __init__(
         self,
@@ -166,10 +188,12 @@ class MinioStorage:
         secret_key: str,
         bucket: str,
         secure: bool,
+        max_upload_bytes: int,
     ) -> None:
         from minio import Minio
 
         self.bucket = bucket
+        self.max_upload_bytes = max_upload_bytes
         self._client = Minio(
             endpoint,
             access_key=access_key,
@@ -189,10 +213,13 @@ class MinioStorage:
         allowed_suffixes: set[str],
     ) -> tuple[str, str]:
         original = (upload.filename or "upload").strip() or "upload"
-        suffix = Path(original).suffix.lower()
-        if suffix not in allowed_suffixes:
-            raise ValueError(f"file type not allowed: {suffix or '(none)'}")
-        data = upload.file.read()
+        data = _read_upload_capped(upload, self.max_upload_bytes)
+        suffix = assert_upload_allowed(
+            filename=original,
+            data=data,
+            allowed_suffixes=allowed_suffixes,
+            max_bytes=self.max_upload_bytes,
+        )
         key = self._key(product_id, folder, suffix)
         self._put(key, data)
         return key, original
@@ -207,6 +234,8 @@ class MinioStorage:
     ) -> str:
         if not suffix.startswith("."):
             suffix = f".{suffix}"
+        if len(data) > self.max_upload_bytes:
+            raise ValueError(f"file too large (max {self.max_upload_bytes} bytes)")
         key = self._key(product_id, folder, suffix.lower())
         self._put(key, data)
         return key
@@ -215,7 +244,8 @@ class MinioStorage:
         raise NotImplementedError("MinIO storage has no local path; use read_bytes()")
 
     def read_bytes(self, key: str) -> bytes:
-        response = self._client.get_object(self.bucket, key)
+        safe = assert_storage_key(key)
+        response = self._client.get_object(self.bucket, safe)
         try:
             return response.read()
         finally:
@@ -226,18 +256,18 @@ class MinioStorage:
         from minio.error import S3Error
 
         try:
-            self._client.stat_object(self.bucket, key)
+            self._client.stat_object(self.bucket, assert_storage_key(key))
             return True
-        except S3Error:
+        except (S3Error, ValueError):
             return False
 
     def delete(self, key: str) -> None:
         from minio.error import S3Error
 
         try:
-            self._client.remove_object(self.bucket, key)
+            self._client.remove_object(self.bucket, assert_storage_key(key))
             logger.info("deleted object %s", key)
-        except S3Error:
+        except (S3Error, ValueError):
             return
 
     def _put(self, key: str, data: bytes) -> None:
@@ -251,8 +281,12 @@ class MinioStorage:
         )
 
     def _key(self, product_id: uuid.UUID, folder: str, suffix: str) -> str:
+        safe_folder = folder.replace("..", "").strip("/\\") or "files"
         return (
-            Path("products") / str(product_id) / folder / f"{uuid.uuid4().hex}{suffix}"
+            Path("products")
+            / str(product_id)
+            / safe_folder
+            / f"{uuid.uuid4().hex}{suffix}"
         ).as_posix()
 
 
@@ -274,8 +308,12 @@ def get_storage() -> Storage:
             secret_key=settings.minio_secret_key,
             bucket=settings.minio_bucket,
             secure=settings.minio_secure,
+            max_upload_bytes=settings.max_upload_bytes,
         )
-    return LocalStorage(root=_root_from_settings(settings))
+    return LocalStorage(
+        root=_root_from_settings(settings),
+        max_upload_bytes=settings.max_upload_bytes,
+    )
 
 
 def reset_storage_for_tests() -> None:

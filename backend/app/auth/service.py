@@ -82,6 +82,24 @@ def login(
     return tokens
 
 
+def revoke_all_refresh_tokens(db: Session, user_id: UUID) -> int:
+    """Revoke every active refresh session for a user (theft / reuse response)."""
+    now = datetime.now(UTC)
+    rows = list(
+        db.scalars(
+            select(RefreshToken).where(
+                RefreshToken.user_id == user_id,
+                RefreshToken.revoked_at.is_(None),
+            )
+        ).all()
+    )
+    for row in rows:
+        row.revoked_at = now
+    if rows:
+        db.commit()
+    return len(rows)
+
+
 def refresh(
     db: Session,
     *,
@@ -94,8 +112,31 @@ def refresh(
     )
     now = datetime.now(UTC)
 
-    if row is None or row.revoked_at is not None:
-        logger.info("refresh failed")
+    if row is None:
+        logger.info("refresh failed unknown")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    if row.revoked_at is not None:
+        # Successor session exists (rotation or later login) → treat reuse as theft.
+        successor = db.scalar(
+            select(RefreshToken.id).where(
+                RefreshToken.user_id == row.user_id,
+                RefreshToken.id != row.id,
+                RefreshToken.created_at >= row.created_at,
+            )
+        )
+        if successor is not None:
+            n = revoke_all_refresh_tokens(db, row.user_id)
+            logger.warning(
+                "refresh token reuse detected user_id=%s revoked_sessions=%s",
+                row.user_id,
+                n,
+            )
+        else:
+            logger.info("refresh failed revoked")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token",

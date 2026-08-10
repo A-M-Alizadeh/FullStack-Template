@@ -41,9 +41,16 @@ class Settings(BaseSettings):
     cors_origins: list[str]
     frontend_url: str
     upload_dir: str = "uploads"
+    max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)  # 10 MiB
 
     # Soft-deleted products older than this many days are eligible for hard purge.
     soft_delete_retention_days: int = Field(default=30, ge=1)
+
+    # Rate limits (SlowAPI strings). Disabled when rate_limit_enabled is false.
+    rate_limit_enabled: bool = True
+    rate_limit_auth: str = "10/minute"
+    rate_limit_public: str = "60/minute"
+    rate_limit_api: str = "120/minute"
 
     # Cache / object storage (optional bonuses; empty = disabled / local disk).
     redis_url: str = ""

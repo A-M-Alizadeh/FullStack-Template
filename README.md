@@ -65,6 +65,7 @@ Demo product: `DEMO-001` (published, version history, PDF, sample scans).
 - Public passport, PDF download, QR scan analytics
 - Soft delete + Undo; purge job after retention (`scripts.purge_deleted_products`)
 - Search / pagination, audit log, drag-and-drop uploads
+- Rate limits, refresh reuse detection, upload magic/size checks
 - Optional Redis cache and MinIO storage
 
 ## Tests

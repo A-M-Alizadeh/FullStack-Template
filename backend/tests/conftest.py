@@ -26,6 +26,7 @@ os.environ["COOKIE_SAMESITE"] = "lax"
 # Avoid accidental Redis/MinIO coupling in unit/integration tests.
 os.environ["REDIS_URL"] = ""
 os.environ["STORAGE_BACKEND"] = "local"
+os.environ["RATE_LIMIT_ENABLED"] = "false"
 
 from app.core.cache import reset_cache_for_tests  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
@@ -94,7 +95,7 @@ def db() -> Generator[Session, None, None]:
 
 @pytest.fixture
 def storage(tmp_path: Path) -> LocalStorage:
-    return LocalStorage(root=tmp_path / "uploads")
+    return LocalStorage(root=tmp_path / "uploads", max_upload_bytes=10 * 1024 * 1024)
 
 
 @pytest.fixture

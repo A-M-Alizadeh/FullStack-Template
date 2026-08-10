@@ -126,6 +126,36 @@ def test_refresh_after_logout(client: TestClient, admin_user: User):
     assert r.status_code == 401
 
 
+def test_refresh_reuse_after_rotation_kills_sessions(
+    client: TestClient, admin_user: User
+):
+    """Presenting a rotated (old) refresh token revokes all live sessions."""
+    client.post(
+        "/api/v1/auth/login",
+        json={"email": admin_user.email, "password": "admin-pass"},
+    )
+    old = client.cookies.get(REFRESH_COOKIE)
+    assert old
+
+    rotated = client.post("/api/v1/auth/refresh")
+    assert rotated.status_code == 200
+    new = client.cookies.get(REFRESH_COOKIE)
+    assert new and new != old
+
+    reuse = client.post(
+        "/api/v1/auth/refresh",
+        cookies={REFRESH_COOKIE: old},
+    )
+    assert reuse.status_code == 401
+
+    # New session from rotation must also be dead after reuse detection.
+    again = client.post(
+        "/api/v1/auth/refresh",
+        cookies={REFRESH_COOKIE: new},
+    )
+    assert again.status_code == 401
+
+
 def test_refresh_unknown_token(client: TestClient):
     """Unknown refresh token in body returns 401."""
     r = client.post(

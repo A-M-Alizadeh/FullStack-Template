@@ -282,6 +282,7 @@ def download_certification_pdf(
         row.pdf_path,
         filename=f"{certification_id}.pdf",
         media_type="application/pdf",
+        product_id=product_id,
     )
 
 
@@ -354,6 +355,7 @@ def download_document(
         row.file_path,
         filename=row.original_filename,
         media_type="application/pdf",
+        product_id=product_id,
     )
 
 
@@ -427,4 +429,9 @@ def download_image(
     _: RequireEditorOrAdmin,
 ) -> Response:
     row = media_service.get_image(db, product_id, image_id)
-    return storage_response(storage, row.file_path, filename=f"{image_id}")
+    return storage_response(
+        storage,
+        row.file_path,
+        filename=f"{image_id}",
+        product_id=product_id,
+    )

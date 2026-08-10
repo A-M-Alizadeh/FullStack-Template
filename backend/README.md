@@ -48,6 +48,8 @@ Swagger: http://localhost:8000/docs
 | `REDIS_URL` | Dashboard/analytics cache (empty = off) |
 | `STORAGE_BACKEND` | `local` (default) or `minio` |
 | `SOFT_DELETE_RETENTION_DAYS` | Days before soft-deleted products can be purged (default 30) |
+| `MAX_UPLOAD_BYTES` | Upload size cap (default 10 MiB) |
+| `RATE_LIMIT_ENABLED` | IP rate limits (`auth` / `public` / `api` buckets) |
 
 ## Seeds & jobs
 

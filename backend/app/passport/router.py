@@ -73,6 +73,7 @@ def public_cert_file(
         row.pdf_path,
         filename=f"{certification_id}.pdf",
         media_type="application/pdf",
+        product_id=row.product_id,
     )
 
 
@@ -89,6 +90,7 @@ def public_document_file(
         row.file_path,
         filename=row.original_filename,
         media_type="application/pdf",
+        product_id=row.product_id,
     )
 
 
@@ -100,4 +102,9 @@ def public_image_file(
     storage: FileStorage,
 ) -> Response:
     row = passport_service.resolve_public_image(db, public_uuid, image_id)
-    return storage_response(storage, row.file_path, filename=f"{image_id}")
+    return storage_response(
+        storage,
+        row.file_path,
+        filename=f"{image_id}",
+        product_id=row.product_id,
+    )

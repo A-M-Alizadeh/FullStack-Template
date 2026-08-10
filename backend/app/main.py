@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import setup_logging
 from app.core.middleware import RequestContextMiddleware
+from app.core.rate_limit import RateLimitMiddleware
 
 OPENAPI_TAGS = [
     {"name": "health", "description": "Liveness"},
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
         expose_headers=["Content-Disposition"],
     )
     app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(RateLimitMiddleware)
 
     register_exception_handlers(app)
     app.include_router(api_router, prefix=settings.api_prefix)

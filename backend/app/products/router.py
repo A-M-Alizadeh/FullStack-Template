@@ -156,4 +156,5 @@ def download_product_qr(
         passport.qr_code_path,
         filename=f"{passport.public_uuid}.png",
         media_type="image/png",
+        product_id=product_id,
     )
