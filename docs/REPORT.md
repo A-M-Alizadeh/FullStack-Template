@@ -152,6 +152,8 @@ Production-style API process (Docker / deploy):
 gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:$PORT app.main:app
 ```
 
+Live demo hosting: **[DEPLOY.md](./DEPLOY.md)** (Vercel + Render Blueprint).
+
 ## 8. Tests & CI
 
 ```bash

@@ -16,6 +16,20 @@ def _env_files() -> tuple[str, ...]:
     )
 
 
+def normalize_database_url(raw: str) -> str:
+    """Turn a managed-Postgres URL into a SQLAlchemy + psycopg URL."""
+    url = raw.strip()
+    if not url:
+        return url
+    if url.startswith("postgresql+psycopg://"):
+        return url
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url.removeprefix("postgres://")
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url.removeprefix("postgresql://")
+    return url
+
+
 class Settings(BaseSettings):
     """All runtime values come from environment / .env.{APP_ENV} files."""
 
@@ -32,11 +46,15 @@ class Settings(BaseSettings):
     debug: bool = False
     api_prefix: str = "/api/v1"
 
-    postgres_user: str
-    postgres_password: str
-    postgres_host: str
+    # Used when DATABASE_URL is unset (local docker-compose).
+    postgres_user: str = "postgres"
+    postgres_password: str = "postgres"
+    postgres_host: str = "localhost"
     postgres_port: int = 5432
-    postgres_db: str
+    postgres_db: str = "dpp"
+
+    # Managed hosts (Render/Railway) inject this; takes precedence when set.
+    database_url_override: str = Field(default="", validation_alias="DATABASE_URL")
 
     cors_origins: list[str]
     frontend_url: str
@@ -66,7 +84,7 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = Field(default=60, ge=1)
     refresh_expire_days: int = Field(default=14, ge=1)
 
-    # Cross-origin SPA (e.g. :3000 → :8000) needs SameSite=none + Secure.
+    # Cross-origin SPA (e.g. Vercel → Render) needs SameSite=none + Secure.
     # Chromium treats http://localhost as OK for Secure cookies.
     cookie_secure: bool = True
     cookie_samesite: str = "none"
@@ -74,6 +92,8 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def database_url(self) -> str:
+        if self.database_url_override.strip():
+            return normalize_database_url(self.database_url_override)
         return (
             f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"

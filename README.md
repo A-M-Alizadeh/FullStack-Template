@@ -77,10 +77,11 @@ cd frontend && npm test
 
 CI runs on pushes/PRs to `main`/`master` (GitHub Actions).
 
-## Deploy notes
+## Deploy
 
-- **API image:** Gunicorn + Uvicorn workers (`backend/Dockerfile`)
-- **Frontend:** Next.js — typically Vercel or any Node host
-- **API host:** Render / Railway / Fly (or any Docker host with Postgres)
+Live demo target: **Vercel** (frontend) + **Render** (API + Postgres).
 
-Step-by-step ops notes stay in the report; keep this README as the runbook.
+Step-by-step: **[docs/DEPLOY.md](docs/DEPLOY.md)** · Blueprint: [`render.yaml`](render.yaml)
+
+- API image: Gunicorn + Uvicorn workers; migrations on start  
+- Cross-origin refresh cookie: `COOKIE_SECURE=true` + `COOKIE_SAMESITE=none`
