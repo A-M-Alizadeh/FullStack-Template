@@ -43,15 +43,20 @@ If the Blueprint fails because `DATABASE_URL` was empty: open the service → **
 
 ### Seed demo data (once)
 
-Render → `dpp-api` → **Shell**:
+Render **Shell is not on the free plan**. Seed from your laptop against Neon instead
+(same `DATABASE_URL`; tables were already created by Alembic on Render boot):
 
 ```bash
-APP_ENV=production python -m scripts.seed_users
-APP_ENV=production python -m scripts.seed_lookups
-APP_ENV=production python -m scripts.seed_products
-APP_ENV=production python -m scripts.seed_scans
-APP_ENV=production python -m scripts.seed_audit
+cd backend
+export DATABASE_URL='postgresql://…neon.tech/neondb?sslmode=require'   # your Neon URI
+APP_ENV=local uv run python -m scripts.seed_users
+APP_ENV=local uv run python -m scripts.seed_lookups
+APP_ENV=local uv run python -m scripts.seed_products
+APP_ENV=local uv run python -m scripts.seed_scans
+APP_ENV=local uv run python -m scripts.seed_audit
 ```
+
+`DATABASE_URL` overrides local Postgres. Other settings still come from `.env.local`.
 
 | Email | Password |
 |-------|----------|
@@ -60,19 +65,26 @@ APP_ENV=production python -m scripts.seed_audit
 
 ---
 
-## 3. Vercel (frontend)
+## 3. Vercel (frontend only)
 
-1. [https://vercel.com/signup](https://vercel.com/signup) with GitHub.
-2. **Add New Project** → this repo.
-3. **Root Directory:** `frontend` (Edit → set before deploy).
-4. Environment variables:
+Do **not** use Application Preset **Services** (that tries to host FastAPI on Vercel).
+The API stays on Render.
+
+1. [https://vercel.com](https://vercel.com) → **Add New Project** → this repo.
+2. Change preset away from **Services** if shown — pick a normal **Next.js** / web app import.
+3. Set **Root Directory** to `frontend` (Edit → `frontend` → Continue).
+4. Framework: Next.js. Ignore / do not add a backend service.
+5. Environment variables:
 
 | Name | Value |
 |------|--------|
-| `NEXT_PUBLIC_API_URL` | `https://<your-api-host>/api/v1` |
+| `NEXT_PUBLIC_API_URL` | `https://<your-render-host>/api/v1` |
 | `NEXT_PUBLIC_APP_NAME` | `Digital Product Passport` |
 
-5. Deploy. Copy the site URL (`https://….vercel.app`).
+6. Deploy. Copy the site URL (`https://….vercel.app`).
+
+If Vercel keeps forcing “Services”, cancel and use: **Add Project** → same repo →  
+**Root Directory = frontend** only (no backend path).
 
 ---
 
