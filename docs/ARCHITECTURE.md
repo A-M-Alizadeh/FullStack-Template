@@ -17,7 +17,7 @@ Browser (Next.js)
 | Frontend | Next.js App Router, TypeScript, MUI, RTK Query | UI only — no business API routes |
 | Backend | FastAPI, SQLAlchemy 2, Pydantic v2, Alembic | Auth, domain APIs, file serve |
 | Data | PostgreSQL | Users, products, nested resources, passports, scans |
-| Files | Local disk (`UPLOAD_DIR`) behind a `Storage` protocol | Certs, docs, images, QR PNGs |
+| Files | Local disk or MinIO behind `Storage` protocol | Certs, docs, images, QR PNGs, passport PDFs |
 
 **Local run:** Postgres in Docker; API and Next on the host. Dockerfiles exist for full-stack Compose when needed.
 
@@ -50,14 +50,15 @@ Normalized around **products**:
 
 - Children: materials, sustainability (1:1), certifications, documents, images  
 - Lookups: certification types, issuing authorities  
-- Publish: `passports` (1:1 with product) → append-only `qr_scans`  
-- Auth: `users`, `refresh_tokens`
+- Publish: `passports` (versioned per product; one `active` row) → append-only `qr_scans`  
+- Auth: `users`, `refresh_tokens`  
+- Audit: `audit_logs`
 
 Enums cover small fixed sets (role, status, category, doc/image type). Countries are ISO alpha-2 strings validated in code.
 
 Details and ERD: [backend/docs/database.md](../backend/docs/database.md).
 
-Migrations: Alembic (`alembic upgrade head`). Seeds: users, lookups, demo product, sample scans.
+Migrations: Alembic (`alembic upgrade head`). Seeds: users, lookups, demo product, scans/versions/PDF, audit samples.
 
 ## 4. Security approach
 
@@ -99,6 +100,7 @@ Aligned with assessment bonuses / production hardening:
 | Area | Idea |
 |------|------|
 | Soft delete | **Done** — `products.deleted_at`; lists/get hide deleted rows; `POST …/restore` + UI Undo |
+| Purge job | **Done** — `scripts.purge_deleted_products` hard-deletes rows past `SOFT_DELETE_RETENTION_DAYS` + files |
 | Search / filters | **Done** — `q` + `status` on product list; UI pagination |
 | Audit log | **Done** — `audit_logs` table; admin `/audit` UI; create/delete/restore/publish/user mutations |
 | Drag & drop uploads | **Done** — shared `FileDropZone` on certs/docs/images |

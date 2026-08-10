@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     frontend_url: str
     upload_dir: str = "uploads"
 
+    # Soft-deleted products older than this many days are eligible for hard purge.
+    soft_delete_retention_days: int = Field(default=30, ge=1)
+
     # Cache / object storage (optional bonuses; empty = disabled / local disk).
     redis_url: str = ""
     storage_backend: str = "local"  # local | minio

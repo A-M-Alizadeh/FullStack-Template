@@ -1,49 +1,35 @@
 # Backend
 
-FastAPI API for the DPP platform.
+FastAPI API for the Digital Product Passport platform.
+
+Architecture: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) · Overview PDF: [`../docs/DPP_Project_Overview.pdf`](../docs/DPP_Project_Overview.pdf)
 
 ## Layout
 
 ```
 app/
   api/         route aggregation
-  core/        config, logging, middleware, enums
+  core/        config, storage, cache, logging
   auth/        login, JWT, refresh, deps
-  passport/    publish, public passport, scans
+  users/       admin user CRUD
+  products/    product + nested resources
+  passport/    publish, public passport, PDF, scans
   dashboard/   summary counts
   analytics/   scan stats
-  schemas/     Pydantic request/response models
-  users/       User model
-  products/    product + nested models
+  audit/       append-only audit trail
+  schemas/     Pydantic models
   database/    engine, session, Base
-alembic/
-scripts/       seed helpers
+alembic/       migrations
+scripts/       seeds, purge, overview PDF
 tests/
-```
-
-## Status
-
-Auth (JWT access + httpOnly refresh cookie), product CRUD + nested resources, publish/QR, public passport + scan tracking, dashboard, analytics, **admin-only user CRUD**, seeds, unit/integration tests.
-
-Swagger: `/docs` (tags include `products`, `users`, `publish`, `passport`, …).
-
-Architecture overview: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md). Frontend: `../frontend`.
-
-## Tests
-
-Uses a separate Postgres DB `dpp_test` (created automatically).
-
-```bash
-docker compose up db
-cd backend
-APP_ENV=local uv run pytest
 ```
 
 ## Run
 
 ```bash
-docker compose up db redis minio
+docker compose up db          # from repo root; add redis minio if needed
 cd backend
+uv sync
 APP_ENV=local uv run alembic upgrade head
 APP_ENV=local uv run python -m scripts.seed_users
 APP_ENV=local uv run python -m scripts.seed_lookups
@@ -53,57 +39,51 @@ APP_ENV=local uv run python -m scripts.seed_audit
 APP_ENV=local uv run uvicorn app.main:app --reload
 ```
 
-Optional infra (see `.env.local.example`):
+Swagger: http://localhost:8000/docs
 
-- `REDIS_URL` — dashboard/analytics cache (empty = disabled)
-- `STORAGE_BACKEND=minio` — object storage instead of local `UPLOAD_DIR`
+### Optional env
 
-Seed users (dev only):
+| Variable | Purpose |
+|----------|---------|
+| `REDIS_URL` | Dashboard/analytics cache (empty = off) |
+| `STORAGE_BACKEND` | `local` (default) or `minio` |
+| `SOFT_DELETE_RETENTION_DAYS` | Days before soft-deleted products can be purged (default 30) |
+
+## Seeds & jobs
+
+| Command | What it does |
+|---------|----------------|
+| `scripts.seed_users` | admin / editor demo accounts |
+| `scripts.seed_lookups` | cert types & authorities |
+| `scripts.seed_products` | `DEMO-001` + nested demo files |
+| `scripts.seed_scans` | publish + republish, PDF cache, QR scans |
+| `scripts.seed_audit` | sample audit rows if empty |
+| `scripts.purge_deleted_products` | hard-delete old soft-deleted products + files |
+| `scripts.generate_overview_pdf` | write `docs/DPP_Project_Overview.pdf` |
+
+```bash
+APP_ENV=local uv run python -m scripts.purge_deleted_products --dry-run
+APP_ENV=local uv run python -m scripts.purge_deleted_products --days 30
+```
+
+## Main APIs
+
+**Auth:** `POST /auth/login|refresh|logout`, `GET /auth/me`  
+**Products:** CRUD, nested materials/sustainability/certs/docs/images, soft delete + restore  
+**Publish:** `POST /products/{id}/publish`, versions, QR PNG  
+**Public:** `GET /passport/{uuid}`, `?src=qr`, `/pdf`, media files  
+**Ops:** dashboard, analytics, audit (admin), users (admin)
+
+## Tests
+
+Uses DB `dpp_test` (auto-created). Needs Postgres:
+
+```bash
+docker compose up db
+APP_ENV=local uv run pytest
+```
+
+## Seed logins
 
 - `admin@example.com` / `admin1234`
 - `editor@example.com` / `editor1234`
-
-Demo product SKU: `DEMO-001`.
-
-- `seed_scans` — publish + one republish (version history), cache PDF, sample QR scans
-- `seed_audit` — sample `/audit` rows when the table is empty
-
-Auth:
-
-- `POST /api/v1/auth/login` — access JWT in JSON; refresh in httpOnly cookie
-- `POST /api/v1/auth/refresh` — cookie (or optional body); new access + rotated cookie
-- `POST /api/v1/auth/logout` — revoke + clear cookie
-- `GET /api/v1/auth/me` — Bearer access token
-
-Frontend must call auth with `credentials: "include"`. Access token stays in memory; refresh is cookie-only.
-
-Products (admin or editor):
-
-- `GET/POST /api/v1/products`
-- `GET/PATCH/DELETE /api/v1/products/{id}`
-- Materials / sustainability / certifications / documents / images under `/api/v1/products/{id}/...`
-- Lookups: `GET /api/v1/products/certification-types`, `GET /api/v1/products/issuing-authorities`
-- `POST /api/v1/products/{id}/publish` — first publish or new version (same public UUID)
-- `GET /api/v1/products/{id}/passport/versions`
-- `GET /api/v1/products/{id}/passport/qr`
-
-Public:
-
-- `GET /api/v1/passport/{uuid}` (no auth; optional `?version=`)
-- `GET /api/v1/passport/{uuid}?src=qr` — same data; also records a QR scan
-- `GET /api/v1/passport/{uuid}/pdf` — PDF export (cached via BackgroundTasks after publish)
-- File downloads under `/api/v1/passport/{uuid}/.../file`
-
-QR codes encode `{FRONTEND_URL}/passport/{uuid}?src=qr`. The frontend should forward `src` to the API when loading the page.
-
-Dashboard / analytics (admin or editor):
-
-- `GET /api/v1/dashboard`
-- `GET /api/v1/analytics`
-
-Users (admin only):
-
-- `GET/POST /api/v1/users`
-- `PATCH/DELETE /api/v1/users/{id}`
-
-Docs: http://localhost:8000/docs

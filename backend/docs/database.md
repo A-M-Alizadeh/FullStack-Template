@@ -176,6 +176,7 @@ erDiagram
 
 - Files: path on disk, not bytes in Postgres.
 - Soft delete: `products.deleted_at` (null = active). Active SKUs unique via partial index.
+- Purge: CLI `scripts.purge_deleted_products` hard-deletes rows with `deleted_at` older than `SOFT_DELETE_RETENTION_DAYS` (and removes stored files).
 - Audit log: not in v1 (bonus next).
 - Dashboard: count products, passports, `qr_scans`.
 - Enums store **text** (`draft`), not numbers (`1`). Easier to read; tiny size difference does not matter here.

@@ -1,31 +1,27 @@
 # Frontend
 
-Next.js (App Router) + TypeScript + MUI + Redux Toolkit / RTK Query.
+Next.js (App Router) + TypeScript + MUI + RTK Query.
 
-Talks to the FastAPI backend directly (no Next.js API routes for business logic).
+Talks to FastAPI directly (no Next.js business API routes).
 
 ## Layout
 
 ```
 app/
-  (auth)/login/           # guest-only login
-  (backoffice)/           # AuthGate + AppShell
+  (auth)/login/
+  (backoffice)/          # AuthGate + AppShell
     dashboard/
-    products/             # list, new, [id]
+    products/
     passports/
     analytics/
-    users/                # admin only (RoleGate)
+    audit/               # admin (RoleGate)
+    users/               # admin (RoleGate)
     settings/
-  passport/[uuid]/       # public passport (no auth)
-components/               # shell, AuthGate, RoleGate, feedback
-features/                 # domain UI
-store/
-  api/                    # RTK Query endpoints
-  auth/                   # access token + user (memory only)
-lib/                      # env, errors, i18n, navigation
-hooks/
-theme/
-types/
+  passport/[uuid]/      # public
+components/
+features/
+store/                   # RTK Query + auth slice (access token in memory)
+lib/                     # env, i18n, navigation
 ```
 
 ## Run
@@ -36,42 +32,36 @@ npm i
 npm run dev
 ```
 
-App: http://localhost:3000 — API must be up on :8000 (`NEXT_PUBLIC_API_URL`).
+App: http://localhost:3000 — API must be on :8000 (`NEXT_PUBLIC_API_URL`).
 
 ## Auth & roles
 
-- Refresh token: httpOnly cookie (`credentials: "include"`)
-- Access token: in-memory RTK slice; `Authorization: Bearer …`
-- Reload → `/auth/refresh` via cookie → new access
-- Nav items can set `roles` (e.g. Users = admin)
-- Pages use `RoleGate` where needed; API still enforces roles
+- Refresh: httpOnly cookie (`credentials: "include"`)
+- Access: in-memory Bearer token; reload uses `/auth/refresh`
+- Nav `roles` + page `RoleGate`; API remains source of truth
 
-## Shipped
+## Features
 
 | Area | Notes |
 |------|--------|
-| Login / session | RHF + Zod; AuthGate bootstrap |
-| Products | CRUD + nested tabs; list cover / QR modal / views |
-| Publish + QR | Editor panel + QR dialog |
-| Preview tab | Iframe of public passport after publish |
-| Passports | Published products list |
-| Users | Admin CRUD (hidden from editors) |
-| Dashboard / analytics | Summaries and scan tables |
-| Public passport | Brand mark; `?src=qr` scan tracking |
-| Settings | Light/dark + EN/IT (`useT`) |
+| Products | CRUD, nested tabs, search/pagination, cover, QR modal, Undo delete |
+| Publish | QR, public link, republish + version history |
+| Uploads | Drag-and-drop on certs / docs / images |
+| Passports | Published list |
+| Public page | Brand mark, PDF download, `?src=qr` tracking |
+| Audit / Users | Admin only |
+| Settings | Light/dark + EN/IT |
 
 ## Tests
 
 ```bash
-npm test              # Vitest (unit + RTL)
+npm test
 npm run test:watch
 ```
 
-E2E smoke (API + DB must be up with seed users):
+E2E (API + seeded DB):
 
 ```bash
 npx playwright install chromium   # once
 npm run test:e2e
-npm run test:e2e:headed
-npm run test:e2e:ui
 ```

@@ -30,16 +30,6 @@ SEED_USERS = (
         "password": "editor1234",
         "role": UserRole.EDITOR,
     },
-    {
-        "email": "aliadmin@example.com",
-        "password": "123456789",
-        "role": UserRole.ADMIN,
-    },
-    {
-        "email": "alieditor@example.com",
-        "password": "123456789",
-        "role": UserRole.EDITOR,
-    },
 )
 
 

@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.audit import service as audit_service
 from app.core.cache import invalidate_stats_cache
 from app.core.config import get_settings
 from app.core.enums import ImageType, PassportStatus, ProductStatus
+from app.core.storage import Storage
 from app.products.models import Passport, Product, ProductImage, QrScan
 from app.schemas.products import (
     ProductCoverImage,
@@ -320,3 +321,93 @@ def restore_product(
     invalidate_stats_cache()
     logger.info("product restored id=%s", product_id)
     return get_product_response(db, product.id)
+
+
+def _storage_keys_for_product(product: Product) -> set[str]:
+    keys: set[str] = set()
+    for cert in product.certifications:
+        if cert.pdf_path:
+            keys.add(cert.pdf_path)
+    for doc in product.documents:
+        if doc.file_path:
+            keys.add(doc.file_path)
+    for image in product.images:
+        if image.file_path:
+            keys.add(image.file_path)
+    for passport in product.passports:
+        if passport.qr_code_path:
+            keys.add(passport.qr_code_path)
+        if passport.pdf_path:
+            keys.add(passport.pdf_path)
+    return keys
+
+
+def purge_soft_deleted_products(
+    db: Session,
+    *,
+    storage: Storage,
+    older_than_days: int | None = None,
+    dry_run: bool = False,
+    actor_id: UUID | None = None,
+) -> list[UUID]:
+    """Hard-delete soft-deleted products past the retention window.
+
+    Removes DB rows (cascades nested tables) and stored files. Intended for a
+    scheduled job / CLI, not the normal DELETE API.
+    """
+    days = older_than_days
+    if days is None:
+        days = get_settings().soft_delete_retention_days
+    if days < 1:
+        raise ValueError("older_than_days must be >= 1")
+
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    rows = list(
+        db.scalars(
+            select(Product)
+            .where(
+                Product.deleted_at.is_not(None),
+                Product.deleted_at <= cutoff,
+            )
+            .options(
+                selectinload(Product.certifications),
+                selectinload(Product.documents),
+                selectinload(Product.images),
+                selectinload(Product.passports),
+            )
+            .order_by(Product.deleted_at.asc())
+        ).all()
+    )
+    purged: list[UUID] = []
+    for product in rows:
+        product_id = product.id
+        sku = product.sku
+        keys = _storage_keys_for_product(product)
+        if dry_run:
+            logger.info(
+                "dry-run purge product_id=%s sku=%s files=%s",
+                product_id,
+                sku,
+                len(keys),
+            )
+            purged.append(product_id)
+            continue
+
+        audit_service.record(
+            db,
+            actor_user_id=actor_id,
+            action="product.purge",
+            entity_type="product",
+            entity_id=product_id,
+            details={"sku": sku, "name": product.name, "retention_days": days},
+        )
+        db.delete(product)
+        db.commit()
+        for key in keys:
+            storage.delete(key)
+        purged.append(product_id)
+        logger.info("purged soft-deleted product_id=%s sku=%s", product_id, sku)
+
+    if purged and not dry_run:
+        invalidate_stats_cache()
+    return purged
