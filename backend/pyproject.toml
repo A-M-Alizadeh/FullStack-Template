@@ -20,6 +20,7 @@ dependencies = [
     "reportlab==4.4.3",
     "redis==6.4.0",
     "minio==7.2.16",
+    "gunicorn==23.0.0",
 ]
 
 [dependency-groups]
