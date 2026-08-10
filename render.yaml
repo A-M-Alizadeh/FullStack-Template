@@ -1,15 +1,8 @@
-# Render Blueprint: API + Postgres.
-# Dashboard → New → Blueprint → connect this repo (branch: master).
-# After the first deploy, set CORS_ORIGINS / FRONTEND_URL to your Vercel URL
-# (see docs/DEPLOY.md).
+# Free-path Blueprint: API only (no Render Postgres — that needs a card).
+# Database: Neon free tier → paste connection string into DATABASE_URL.
+# Full steps: docs/DEPLOY.md
 #
-# Free-tier Postgres/plans change over time — adjust `plan` in the dashboard if needed.
-
-databases:
-  - name: dpp-db
-    # Free Postgres is legacy; smallest current plan (paid). Adjust in dashboard if needed.
-    plan: basic-256mb
-    postgresMajorVersion: "16"
+# Dashboard → New → Blueprint → this repo / master.
 
 services:
   - type: web
@@ -31,10 +24,9 @@ services:
         value: "false"
       - key: API_PREFIX
         value: /api/v1
+      # Set in the Render dashboard after creating a Neon database (sync: false).
       - key: DATABASE_URL
-        fromDatabase:
-          name: dpp-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: JWT_ALGORITHM
@@ -43,7 +35,7 @@ services:
         value: "30"
       - key: REFRESH_EXPIRE_DAYS
         value: "14"
-      # Replace after Vercel deploy (must match the browser origin exactly).
+      # Replace after Vercel deploy (exact browser origin, no trailing slash).
       - key: CORS_ORIGINS
         value: '["https://your-app.vercel.app"]'
       - key: FRONTEND_URL
@@ -71,6 +63,6 @@ services:
       - key: REDIS_URL
         value: ""
       - key: WEB_CONCURRENCY
-        value: "2"
+        value: "1"
       - key: RUN_MIGRATIONS_ON_START
         value: "true"

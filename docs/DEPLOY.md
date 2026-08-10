@@ -1,30 +1,49 @@
-# Deploy (Vercel + Render)
+# Deploy (free path: Neon + Render + Vercel)
 
-Target shape for a live demo:
+| Piece | Host | Cost |
+|-------|------|------|
+| Database | **Neon** | Free tier |
+| API | **Render** free Docker web service | Free (sleeps when idle) |
+| Frontend | **Vercel** | Free hobby |
 
-| Piece | Host | Notes |
-|-------|------|--------|
-| Frontend | **Vercel** | Root directory = `frontend` |
-| API | **Render** (Docker) | Blueprint: [`render.yaml`](../render.yaml) |
-| Database | **Render Postgres** | Wired via `DATABASE_URL` |
+No Render Postgres → no card required for the DB. Blueprint: [`render.yaml`](../render.yaml).
 
-Cross-origin auth uses `COOKIE_SECURE=true` + `COOKIE_SAMESITE=none` and CORS credentials. The frontend origin and API URL must match what you configure below.
+Cross-origin auth needs `COOKIE_SECURE=true`, `COOKIE_SAMESITE=none`, and matching CORS.
 
 ---
 
-## 1. Backend (Render)
+## 0. Push latest `master`
 
-1. Push `master` (includes `render.yaml`).
-2. [Render Dashboard](https://dashboard.render.com) → **New** → **Blueprint** → select this repo / `master`.
-3. Apply the blueprint (`dpp-db` + `dpp-api`).
-4. Wait until the web service is live. Note the API URL, e.g. `https://dpp-api.onrender.com`.
-5. Health check: `GET https://<api-host>/api/v1/health` → `{"status":"ok"}` (or equivalent).
+Include the free-path `render.yaml` (API only, `DATABASE_URL` set manually).
 
-Migrations run on container start (`docker-entrypoint.sh` → `alembic upgrade head`).
+---
+
+## 1. Neon (Postgres) — create first
+
+1. Sign up: [https://neon.tech](https://neon.tech) (GitHub login is fine).
+2. **New project** → name it `dpp` (region close to you / EU if available).
+3. Open **Connection details** → copy the URI  
+   (`postgresql://...@...neon.tech/neondb?sslmode=require`).
+4. Keep that string handy — it becomes Render’s `DATABASE_URL`.
+
+---
+
+## 2. Render (API)
+
+1. [https://dashboard.render.com](https://dashboard.render.com) — sign up with GitHub if needed.
+2. **New** → **Blueprint** → this repo / branch `master`.
+3. When prompted for `DATABASE_URL`, paste the Neon URI.
+4. Apply. Wait for `dpp-api` to go live.
+5. Note the URL, e.g. `https://dpp-api.onrender.com`.
+6. Check: `https://<api-host>/api/v1/health` → `{"status":"ok"}`.
+
+First boot runs `alembic upgrade head` via `docker-entrypoint.sh`.
+
+If the Blueprint fails because `DATABASE_URL` was empty: open the service → **Environment** → set `DATABASE_URL` → **Manual Deploy**.
 
 ### Seed demo data (once)
 
-From the Render service **Shell**:
+Render → `dpp-api` → **Shell**:
 
 ```bash
 APP_ENV=production python -m scripts.seed_users
@@ -34,15 +53,18 @@ APP_ENV=production python -m scripts.seed_scans
 APP_ENV=production python -m scripts.seed_audit
 ```
 
-Demo logins: `admin@example.com` / `admin1234`, `editor@example.com` / `editor1234`.
+| Email | Password |
+|-------|----------|
+| `admin@example.com` | `admin1234` |
+| `editor@example.com` | `editor1234` |
 
 ---
 
-## 2. Frontend (Vercel)
+## 3. Vercel (frontend)
 
-1. [Vercel](https://vercel.com) → **Add New Project** → import this repo.
-2. **Root Directory:** `frontend`
-3. Framework: Next.js (see `frontend/vercel.json`)
+1. [https://vercel.com/signup](https://vercel.com/signup) with GitHub.
+2. **Add New Project** → this repo.
+3. **Root Directory:** `frontend` (Edit → set before deploy).
 4. Environment variables:
 
 | Name | Value |
@@ -50,49 +72,44 @@ Demo logins: `admin@example.com` / `admin1234`, `editor@example.com` / `editor12
 | `NEXT_PUBLIC_API_URL` | `https://<your-api-host>/api/v1` |
 | `NEXT_PUBLIC_APP_NAME` | `Digital Product Passport` |
 
-5. Deploy. Note the site URL, e.g. `https://your-app.vercel.app`.
+5. Deploy. Copy the site URL (`https://….vercel.app`).
 
 ---
 
-## 3. Wire CORS + cookies (required)
+## 4. Wire CORS (required)
 
-Back on Render → `dpp-api` → **Environment**, set:
+Render → `dpp-api` → **Environment**:
 
 | Name | Value |
 |------|--------|
 | `FRONTEND_URL` | `https://your-app.vercel.app` |
 | `CORS_ORIGINS` | `["https://your-app.vercel.app"]` |
 
-No trailing slash. Redeploy the API. Login from the Vercel site should set the httpOnly refresh cookie on the API host.
+No trailing slash. **Save** → **Manual Deploy**. Then try login from the Vercel URL.
 
 ---
 
-## 4. Checklist
+## 5. Checklist
 
-- [ ] `/api/v1/health` OK on Render  
-- [ ] Seeds run once  
-- [ ] Vercel build has correct `NEXT_PUBLIC_API_URL`  
-- [ ] `CORS_ORIGINS` / `FRONTEND_URL` match the Vercel origin  
-- [ ] Login works; soft-refresh keeps session  
-- [ ] Public passport + PDF open  
-
----
-
-## Caveats (demo)
-
-- **`STORAGE_BACKEND=local`** on Render is ephemeral — uploads/QR files can disappear on redeploy. Fine for assessment; use MinIO/S3 for real persistence.
-- Free Render web services **spin down** when idle — first request after idle can take ~30–60s.
-- Render Postgres uses a small paid plan in `render.yaml` (`basic-256mb`). Free web dynos still spin down when idle.
+- [ ] Neon project created; URI in Render `DATABASE_URL`
+- [ ] `/api/v1/health` OK (wait ~1 min if the free dyno was asleep)
+- [ ] Seeds run once
+- [ ] Vercel `NEXT_PUBLIC_API_URL` points at Render
+- [ ] CORS / `FRONTEND_URL` match Vercel origin
+- [ ] Login works
 
 ---
 
-## Local production-compose (optional)
+## Caveats
 
-```bash
-cp backend/.env.production.example backend/.env.production
-cp frontend/.env.production.example frontend/.env.production
-# edit secrets + URLs, then:
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
-```
+- Free Render **sleeps** — first request after idle can take 30–60s.
+- Local disk uploads on Render are **ephemeral** (fine for demo).
+- Neon free tier may suspend inactive projects — wake by opening the Neon console or hitting the API.
 
-See also [`backend/.env.production.example`](../backend/.env.production.example).
+---
+
+## Accounts to create (order)
+
+1. **Neon** — database  
+2. **Render** — API (paste Neon URL)  
+3. **Vercel** — frontend (point at Render API)

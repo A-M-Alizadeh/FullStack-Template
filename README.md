@@ -79,9 +79,6 @@ CI runs on pushes/PRs to `main`/`master` (GitHub Actions).
 
 ## Deploy
 
-Live demo target: **Vercel** (frontend) + **Render** (API + Postgres).
+Free live demo: **Neon** (Postgres) + **Render** free web (API) + **Vercel** (frontend).
 
 Step-by-step: **[docs/DEPLOY.md](docs/DEPLOY.md)** · Blueprint: [`render.yaml`](render.yaml)
-
-- API image: Gunicorn + Uvicorn workers; migrations on start  
-- Cross-origin refresh cookie: `COOKIE_SECURE=true` + `COOKIE_SAMESITE=none`
