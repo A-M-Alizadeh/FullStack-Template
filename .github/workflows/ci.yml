@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dpp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d dpp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: local
+      APP_NAME: Digital Product Passport API
+      APP_VERSION: "0.1.0"
+      DEBUG: "true"
+      API_PREFIX: /api/v1
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dpp_test
+      CORS_ORIGINS: '["http://localhost:3000"]'
+      FRONTEND_URL: http://localhost:3000
+      UPLOAD_DIR: uploads
+      JWT_SECRET_KEY: ci-test-secret-key-at-least-32-chars
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRE_MINUTES: "60"
+      REFRESH_EXPIRE_DAYS: "14"
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: lax
+      RATE_LIMIT_ENABLED: "false"
+      REDIS_URL: ""
+      STORAGE_BACKEND: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Sync deps
+        run: uv sync --group dev
+      - name: Pytest
+        run: uv run pytest -q
+
+  frontend:
+    name: Frontend tests & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+          NEXT_PUBLIC_APP_NAME: Digital Product Passport
+        run: npm run build

@@ -1,4 +1,4 @@
-"""Generate docs/DPP_Project_Overview.pdf for assessment handoff.
+"""Generate docs/DPP_Project_Overview.pdf from the project report summary.
 
   APP_ENV=local uv run python -m scripts.generate_overview_pdf
 """
@@ -11,78 +11,59 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
-# scripts/ → backend/ → repo root
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUT_PATH = PROJECT_ROOT / "docs" / "DPP_Project_Overview.pdf"
 
 SECTIONS: list[tuple[str, list[str]]] = [
     (
-        "Digital Product Passport — Project Overview",
+        "Digital Product Passport — Overview",
         [
-            "Full-stack platform to create, publish, and share product passports via QR.",
-            "Stack: FastAPI + PostgreSQL + Alembic · Next.js + TypeScript + MUI + RTK Query.",
-            "Local run: Postgres in Docker; API and web on the host (see root README).",
+            "Full-stack DPP: back office → publish → QR → public passport + scans.",
+            "Stack: FastAPI + Postgres + Alembic · Next.js + MUI + RTK Query.",
+            "Full write-up: docs/REPORT.md (architecture, security, load, demo).",
         ],
     ),
     (
-        "How to run (reviewers)",
+        "Run locally",
         [
-            "1. Copy .env.example and backend/frontend .env.local.example files",
-            "2. docker compose up db",
-            "3. backend: uv sync && alembic upgrade head && seed_* && uvicorn",
-            "4. frontend: npm i && npm run dev",
-            "5. Open http://localhost:3000 and http://localhost:8000/docs",
+            "1. Copy env examples; docker compose up db",
+            "2. backend: uv sync, alembic upgrade head, seed_*, uvicorn",
+            "3. frontend: npm i && npm run dev",
+            "4. App :3000 · API docs :8000/docs",
             "Logins: admin@example.com / admin1234 · editor@example.com / editor1234",
         ],
     ),
     (
-        "Core features",
+        "Architecture choices",
         [
-            "Auth: JWT access + httpOnly refresh cookie; roles admin | editor",
-            "Products with materials, sustainability, certifications, docs, images",
-            "Publish → stable public UUID + QR; public passport page; scan tracking",
-            "Dashboard and analytics; admin user CRUD",
+            "Separate passports table with stable public_uuid (QR-safe).",
+            "Republish bumps version, keeps UUID; soft delete + retention purge.",
+            "Shared editor workspace; roles admin|editor; Storage protocol local/MinIO.",
+            "Prod API: Gunicorn + Uvicorn workers; optional Redis cache.",
         ],
     ),
     (
-        "Bonuses implemented",
+        "Security highlights",
         [
-            "Soft delete + restore/Undo; search and pagination on product list",
-            "Audit log table + admin /audit UI",
-            "Drag-and-drop uploads; passport versioning (republish, same QR URL)",
-            "Passport PDF export (BackgroundTasks cache)",
-            "Redis cache for dashboard/analytics (optional REDIS_URL)",
-            "MinIO-ready Storage backend (STORAGE_BACKEND=minio)",
-            "Purge job: hard-delete soft-deleted products after retention days",
+            "JWT access + httpOnly rotating refresh; reuse of old refresh revokes sessions.",
+            "IP rate limits (auth / public / api) with 429 + Retry-After.",
+            "Uploads: size cap + magic bytes; keys under products/{id}/ only.",
+            "Access token in memory on the client (not localStorage).",
         ],
     ),
     (
-        "Soft delete & purge",
+        "Load / stress",
         [
-            "DELETE sets products.deleted_at (row kept; hidden from lists/passport).",
-            "Restore clears deleted_at (UI Undo snackbar).",
-            "CLI purge removes old soft-deleted rows + stored files:",
-            "  APP_ENV=local uv run python -m scripts.purge_deleted_products --dry-run",
-            "Retention: SOFT_DELETE_RETENTION_DAYS (default 30).",
+            "seed_load — bulk LOAD-* products for list/dashboard pressure.",
+            "stress_test — concurrent GETs; writes docs/load-results.md.",
+            "For pure throughput set RATE_LIMIT_ENABLED=false during the run.",
         ],
     ),
     (
-        "Demo walkthrough",
+        "Tests & CI",
         [
-            "1. Login as admin → Dashboard / Analytics",
-            "2. Products → DEMO-001 → Publish panel (versions, QR, republish)",
-            "3. Soft-delete a product → Undo; open Audit",
-            "4. Public passport → Download PDF; visit with ?src=qr",
-            "5. Login as editor → Users and Audit hidden",
-        ],
-    ),
-    (
-        "Docs & tests",
-        [
-            "Architecture: docs/ARCHITECTURE.md · Database: backend/docs/database.md",
-            "Overview PDF: docs/DPP_Project_Overview.pdf (this file)",
-            "Backend tests: cd backend && APP_ENV=local uv run pytest",
-            "Frontend: npm test · Playwright: npm run test:e2e (API+seeds up)",
+            "Backend: pytest (dpp_test). Frontend: Vitest + production build.",
+            "GitHub Actions on main/master: backend + frontend jobs.",
         ],
     ),
 ]

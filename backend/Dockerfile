@@ -20,8 +20,10 @@ COPY alembic ./alembic
 COPY pyproject.toml uv.lock ./
 
 ENV PATH="/app/.venv/bin:$PATH" \
-    PORT=8000
+    PORT=8000 \
+    WEB_CONCURRENCY=2
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+# Production: Gunicorn + Uvicorn workers (override WEB_CONCURRENCY as needed).
+CMD ["sh", "-c", "gunicorn -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY} -b 0.0.0.0:${PORT} --timeout 60 app.main:app"]

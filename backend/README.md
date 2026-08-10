@@ -1,33 +1,13 @@
 # Backend
 
-FastAPI API for the Digital Product Passport platform.
+FastAPI API for the Digital Product Passport.
 
-Architecture: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) · Overview PDF: [`../docs/DPP_Project_Overview.pdf`](../docs/DPP_Project_Overview.pdf)
+Report: [`../docs/REPORT.md`](../docs/REPORT.md) · Architecture: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)
 
-## Layout
-
-```
-app/
-  api/         route aggregation
-  core/        config, storage, cache, logging
-  auth/        login, JWT, refresh, deps
-  users/       admin user CRUD
-  products/    product + nested resources
-  passport/    publish, public passport, PDF, scans
-  dashboard/   summary counts
-  analytics/   scan stats
-  audit/       append-only audit trail
-  schemas/     Pydantic models
-  database/    engine, session, Base
-alembic/       migrations
-scripts/       seeds, purge, overview PDF
-tests/
-```
-
-## Run
+## Run (local)
 
 ```bash
-docker compose up db          # from repo root; add redis minio if needed
+docker compose up db   # from repo root
 cd backend
 uv sync
 APP_ENV=local uv run alembic upgrade head
@@ -39,53 +19,50 @@ APP_ENV=local uv run python -m scripts.seed_audit
 APP_ENV=local uv run uvicorn app.main:app --reload
 ```
 
-Swagger: http://localhost:8000/docs
+Swagger: http://localhost:8000/docs  
 
-### Optional env
+Logins: `admin@example.com` / `admin1234` · `editor@example.com` / `editor1234`
 
-| Variable | Purpose |
-|----------|---------|
-| `REDIS_URL` | Dashboard/analytics cache (empty = off) |
-| `STORAGE_BACKEND` | `local` (default) or `minio` |
-| `SOFT_DELETE_RETENTION_DAYS` | Days before soft-deleted products can be purged (default 30) |
-| `MAX_UPLOAD_BYTES` | Upload size cap (default 10 MiB) |
-| `RATE_LIMIT_ENABLED` | IP rate limits (`auth` / `public` / `api` buckets) |
+## Production process
 
-## Seeds & jobs
-
-| Command | What it does |
-|---------|----------------|
-| `scripts.seed_users` | admin / editor demo accounts |
-| `scripts.seed_lookups` | cert types & authorities |
-| `scripts.seed_products` | `DEMO-001` + nested demo files |
-| `scripts.seed_scans` | publish + republish, PDF cache, QR scans |
-| `scripts.seed_audit` | sample audit rows if empty |
-| `scripts.purge_deleted_products` | hard-delete old soft-deleted products + files |
-| `scripts.generate_overview_pdf` | write `docs/DPP_Project_Overview.pdf` |
+Docker / deploy uses Gunicorn:
 
 ```bash
-APP_ENV=local uv run python -m scripts.purge_deleted_products --dry-run
-APP_ENV=local uv run python -m scripts.purge_deleted_products --days 30
+gunicorn -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000 app.main:app
 ```
 
-## Main APIs
+(`WEB_CONCURRENCY` in the Dockerfile sets `-w`.)
 
-**Auth:** `POST /auth/login|refresh|logout`, `GET /auth/me`  
-**Products:** CRUD, nested materials/sustainability/certs/docs/images, soft delete + restore  
-**Publish:** `POST /products/{id}/publish`, versions, QR PNG  
-**Public:** `GET /passport/{uuid}`, `?src=qr`, `/pdf`, media files  
-**Ops:** dashboard, analytics, audit (admin), users (admin)
+## Useful scripts
+
+| Script | Purpose |
+|--------|---------|
+| `seed_*` | Demo users, lookups, product, scans, audit |
+| `seed_load` | Bulk `LOAD-*` products for stress |
+| `stress_test` | Concurrent HTTP harness → `docs/load-results.md` |
+| `purge_deleted_products` | Hard-delete soft-deleted rows past retention |
+| `generate_overview_pdf` | Rebuild `docs/DPP_Project_Overview.pdf` |
+
+```bash
+APP_ENV=local uv run python -m scripts.seed_load --count 1000
+APP_ENV=local uv run python -m scripts.stress_test --workers 20 --requests 200
+APP_ENV=local uv run python -m scripts.purge_deleted_products --dry-run
+```
+
+## Config highlights
+
+| Env | Meaning |
+|-----|---------|
+| `RATE_LIMIT_*` | Auth / public / API IP limits (`RATE_LIMIT_ENABLED=false` for pure load) |
+| `MAX_UPLOAD_BYTES` | Upload size cap |
+| `SOFT_DELETE_RETENTION_DAYS` | Purge eligibility |
+| `REDIS_URL` / `STORAGE_BACKEND` | Optional cache / MinIO |
 
 ## Tests
-
-Uses DB `dpp_test` (auto-created). Needs Postgres:
 
 ```bash
 docker compose up db
 APP_ENV=local uv run pytest
 ```
 
-## Seed logins
-
-- `admin@example.com` / `admin1234`
-- `editor@example.com` / `editor1234`
+Uses DB `dpp_test` (created automatically).

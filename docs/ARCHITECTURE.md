@@ -19,7 +19,7 @@ Browser (Next.js)
 | Data | PostgreSQL | Users, products, nested resources, passports, scans |
 | Files | Local disk or MinIO behind `Storage` protocol | Certs, docs, images, QR PNGs, passport PDFs |
 
-**Local run:** Postgres in Docker; API and Next on the host. Dockerfiles exist for full-stack Compose when needed.
+**Local run:** Postgres in Docker; API and Next on the host. API Docker image uses **Gunicorn + Uvicorn workers**. CI on `main`/`master` runs backend pytest and frontend test/build.
 
 ## 2. Design decisions
 
